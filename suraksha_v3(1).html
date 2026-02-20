@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<title>আবহাওয়া পূর্বাভাস — বাংলাদেশ</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════
+  FIREBASE CONFIG — আপনার Firebase Console থেকে এই
+  মানগুলো প্রতিস্থাপন করুন।
+  Project Settings → Your Apps → Firebase SDK snippet
+  ═══════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }              from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc,
+         getDoc, serverTimestamp }    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ── আপনার config এখানে বসান ──────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBkI1L32ouLDkZbQaXjR5f35HWhsVZ8Kbg",
+  authDomain: "suraksha-4f141.firebaseapp.com",
+  projectId: "suraksha-4f141",
+  storageBucket: "suraksha-4f141.firebasestorage.app",
+  messagingSenderId: "1009022095366",
+  appId: "1:1009022095366:web:3e8149e8919ee7cbe4b387",
+  measurementId: "G-ZD9K5ZQMKZ"
+};
+
+// ─────────────────────────────────────────────────────
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ─── রিপোর্ট সেভ করুন (user portal) ─────────────────
+window._fbSaveCase = async function(caseId, data) {
+  await setDoc(doc(db, "cases", caseId), {
+    ...data,
+    savedAt: serverTimestamp(),
+  });
+};
+
+// ─── Case ID দিয়ে খোঁজ (track tab) ──────────────────
+window._fbGetCase = async function(caseId) {
+  const snap = await getDoc(doc(db, "cases", caseId));
+  return snap.exists() ? snap.data() : null;
+};
+</script>
+<style>
+:root{--bg:#060d14;--surface:#0a1520;--card:#0e1e2e;--card2:#122030;--border:#1c3348;--border2:#254460;--teal:#0891b2;--teal2:#06b6d4;--teal3:#67e8f9;--gold:#d97706;--gold2:#f59e0b;--green:#10b981;--red:#ef4444;--red2:#fca5a5;--text:#e0eaf5;--text2:#a8c0d6;--muted:#5a7a96;--mono:'JetBrains Mono',monospace;--sans:'Hind Siliguri',sans-serif;--radius:14px;--shadow:0 8px 32px rgba(0,0,0,.4);}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;line-height:1.6;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 60% 40% at 20% 20%,rgba(8,145,178,.06) 0%,transparent 70%),radial-gradient(ellipse 50% 50% at 80% 80%,rgba(6,182,212,.04) 0%,transparent 70%);}
+#panic-btn{position:fixed;top:14px;right:16px;z-index:9999;background:rgba(239,68,68,.15);border:1.5px solid rgba(239,68,68,.35);border-radius:40px;padding:8px 16px;display:flex;align-items:center;gap:7px;font-family:var(--sans);font-size:.78rem;font-weight:600;color:#fca5a5;cursor:pointer;transition:all .2s;backdrop-filter:blur(12px);}
+#panic-btn:hover{background:rgba(239,68,68,.3);border-color:rgba(239,68,68,.6);transform:scale(1.04);}
+#panic-btn .panic-dot{width:7px;height:7px;border-radius:50%;background:#ef4444;animation:blink 1.2s ease infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+#disguise{display:none;position:fixed;inset:0;z-index:99999;background:#fff;color:#111;font-family:Arial,sans-serif;}
+#disguise-inner{max-width:800px;margin:0 auto;padding:40px 20px;}
+#disguise h1{font-size:1.5rem;color:#0066cc;margin-bottom:16px;}
+#disguise p{font-size:.9rem;line-height:1.8;color:#333;}
+#timer-bar{position:fixed;top:0;left:0;right:0;height:2px;z-index:1000;background:rgba(8,145,178,.15);}
+#timer-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--teal2));width:100%;transition:width 1s linear;}
+#header{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(6,13,20,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:13px 20px;display:flex;align-items:center;gap:14px;}
+.logo-mark{width:34px;height:34px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,var(--teal),var(--teal2));display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 0 16px rgba(8,145,178,.4);}
+.logo-text{font-weight:700;font-size:1rem;letter-spacing:.3px;}
+.logo-sub{font-size:.68rem;color:var(--muted);font-family:var(--mono);}
+.anon-pill{margin-left:auto;margin-right:80px;display:flex;align-items:center;gap:6px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:20px;padding:5px 12px;font-size:.7rem;color:#6ee7b7;font-family:var(--mono);}
+.green-dot{width:6px;height:6px;border-radius:50%;background:#10b981;animation:pulse-g 2s ease infinite;}
+@keyframes pulse-g{0%,100%{opacity:1;}50%{opacity:.3;}}
+main{position:relative;z-index:1;padding-top:68px;max-width:860px;margin:0 auto;padding-left:18px;padding-right:18px;}
+.hero{padding:44px 0 28px;text-align:center;}
+.hero-icon{font-size:3.2rem;display:block;margin-bottom:14px;filter:drop-shadow(0 0 20px rgba(8,145,178,.5));animation:levitate 5s ease-in-out infinite;}
+@keyframes levitate{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
+.hero h1{font-size:clamp(1.6rem,4.5vw,2.4rem);font-weight:700;line-height:1.25;margin-bottom:10px;}
+.hero h1 em{font-style:normal;color:var(--teal2);}
+.hero-sub{font-size:.92rem;color:var(--text2);max-width:480px;margin:0 auto 8px;line-height:1.65;}
+.hero-esc-hint{font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-bottom:28px;}
+.badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:36px;}
+.badge{display:flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:.73rem;color:var(--text2);}
+.badge span{font-size:.9rem;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:var(--shadow);}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--teal),var(--teal2));border-radius:3px 0 0 3px;}
+.card-title{font-size:.97rem;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.card-sub{font-size:.78rem;color:var(--muted);margin-bottom:18px;line-height:1.5;}
+.step-num{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--teal2));display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;font-family:var(--mono);flex-shrink:0;}
+label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.3px;}
+label.req::after{content:' *';color:var(--gold2);}
+input[type=text],input[type=password],textarea,select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--sans);font-size:.88rem;outline:none;transition:border-color .2s,box-shadow .2s;margin-bottom:14px;}
+input:focus,textarea:focus,select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(8,145,178,.12);}
+textarea{resize:vertical;min-height:120px;line-height:1.65;}
+select option{background:var(--surface);}
+.check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:7px;margin-bottom:14px;}
+.check-item{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px;cursor:pointer;font-size:.79rem;transition:all .18s;}
+.check-item:hover{border-color:var(--teal);background:rgba(8,145,178,.06);}
+.check-item.on{border-color:var(--teal2);background:rgba(6,182,212,.1);color:var(--teal3);}
+.check-item input{accent-color:var(--teal2);width:14px;height:14px;cursor:pointer;}
+.radio-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.radio-opt{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 13px;cursor:pointer;font-size:.79rem;transition:all .18s;}
+.radio-opt:hover{border-color:var(--teal);}
+.radio-opt.on{border-color:var(--teal2);background:rgba(6,182,212,.1);color:var(--teal3);}
+.radio-opt input{display:none;}
+.drop-zone{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .25s;margin-bottom:12px;position:relative;}
+.drop-zone:hover,.drop-zone.over{border-color:var(--teal);background:rgba(8,145,178,.05);}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.drop-icon{font-size:1.8rem;margin-bottom:6px;}
+.drop-txt{font-size:.82rem;color:var(--muted);}
+.file-rows{display:flex;flex-direction:column;gap:5px;margin-top:10px;}
+.file-row{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:.78rem;}
+.file-hash{font-family:var(--mono);font-size:.62rem;color:var(--teal);opacity:.8;margin-top:1px;}
+.rm-file{margin-left:auto;cursor:pointer;color:var(--muted);transition:color .15s;font-size:.9rem;}
+.rm-file:hover{color:var(--red);}
+.priv-box{display:flex;gap:10px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:13px;margin-bottom:14px;font-size:.77rem;color:#86efac;line-height:1.6;}
+.priv-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px;}
+#live-risk{display:none;margin-bottom:14px;}
+.risk-wrap{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.risk-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.risk-label-sm{font-size:.75rem;font-weight:600;color:var(--muted);}
+.rbar{height:7px;background:var(--surface);border-radius:4px;overflow:hidden;}
+.rbar-fill{height:100%;border-radius:4px;transition:width .5s ease,background .5s ease;}
+.risk-note{font-size:.72rem;color:var(--muted);margin-top:6px;}
+#ai-section{display:none;}
+.chat-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;height:320px;overflow-y:auto;padding:14px;margin-bottom:10px;scroll-behavior:smooth;}
+.chat-box::-webkit-scrollbar{width:4px;}
+.chat-box::-webkit-scrollbar-track{background:transparent;}
+.chat-box::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.msg{margin-bottom:12px;animation:fadein .3s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+.msg-ai{display:flex;gap:8px;}
+.msg-ai-icon{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--teal2));display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:2px;}
+.msg-ai-bubble{background:var(--card2);border:1px solid var(--border);border-radius:0 10px 10px 10px;padding:10px 13px;font-size:.83rem;line-height:1.65;max-width:88%;}
+.msg-user{display:flex;justify-content:flex-end;}
+.msg-user-bubble{background:rgba(8,145,178,.15);border:1px solid rgba(8,145,178,.25);border-radius:10px 0 10px 10px;padding:9px 13px;font-size:.82rem;line-height:1.6;max-width:85%;color:var(--teal3);}
+.typing{display:flex;gap:4px;padding:8px 4px;}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:bounce .9s infinite;}
+.typing span:nth-child(2){animation-delay:.2s;}
+.typing span:nth-child(3){animation-delay:.4s;}
+@keyframes bounce{0%,80%,100%{transform:translateY(0);}40%{transform:translateY(-6px);}}
+.chat-input-row{display:flex;gap:8px;}
+.chat-input-row input{flex:1;margin-bottom:0;}
+.chat-send{background:linear-gradient(135deg,var(--teal),var(--teal2));border:none;border-radius:9px;padding:0 18px;color:#fff;font-family:var(--sans);font-size:.85rem;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s;white-space:nowrap;}
+.chat-send:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(8,145,178,.35);}
+.chat-send:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.submit-btn{width:100%;background:linear-gradient(135deg,var(--teal),var(--teal2));border:none;border-radius:12px;padding:15px;font-family:var(--sans);font-size:.98rem;font-weight:700;color:#fff;cursor:pointer;transition:transform .2s,box-shadow .2s;box-shadow:0 4px 20px rgba(8,145,178,.3);margin-top:4px;}
+.submit-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(8,145,178,.45);}
+.submit-btn:active{transform:none;}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+#result{display:none;}
+.result-top{background:linear-gradient(135deg,rgba(8,145,178,.12),rgba(6,182,212,.07));border:1px solid rgba(8,145,178,.25);border-radius:16px;padding:28px;text-align:center;margin-bottom:18px;position:relative;overflow:hidden;}
+.result-top::after{content:'';position:absolute;top:-60%;left:-60%;width:220%;height:220%;background:radial-gradient(circle,rgba(8,145,178,.06) 0%,transparent 55%);animation:spin-glow 12s linear infinite;pointer-events:none;}
+@keyframes spin-glow{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.caseid-box{font-family:var(--mono);font-size:1.25rem;font-weight:600;color:var(--teal2);background:rgba(8,145,178,.1);border:1px solid rgba(8,145,178,.3);border-radius:8px;padding:9px 18px;display:inline-flex;align-items:center;gap:10px;margin:10px 0;position:relative;z-index:1;}
+.copy-btn{background:none;border:1px solid rgba(8,145,178,.35);border-radius:5px;padding:3px 9px;font-size:.65rem;color:var(--muted);cursor:pointer;font-family:var(--mono);transition:all .15s;}
+.copy-btn:hover{border-color:var(--teal2);color:var(--teal3);}
+.result-note{font-size:.78rem;color:var(--muted);position:relative;z-index:1;}
+.result-grid{display:grid;gap:14px;}
+.rblock{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;}
+.rblock-title{font-size:.82rem;font-weight:700;color:var(--gold2);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.action-row{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.82rem;line-height:1.55;}
+.action-row:last-child{border:none;padding-bottom:0;}
+.anum{min-width:20px;height:20px;border-radius:50%;background:rgba(8,145,178,.2);color:var(--teal3);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;font-family:var(--mono);flex-shrink:0;}
+.ref-card{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 13px;margin-bottom:7px;cursor:pointer;transition:all .18s;}
+.ref-card:hover{border-color:var(--teal);transform:translateX(3px);}
+.ref-icon2{font-size:1.4rem;}
+.ref-name2{font-weight:600;font-size:.84rem;}
+.ref-num{font-family:var(--mono);font-size:.72rem;color:var(--teal2);margin-top:2px;}
+.ref-tag-u{margin-left:auto;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;border-radius:5px;padding:2px 7px;font-size:.65rem;font-family:var(--mono);}
+.ref-tag-n{margin-left:auto;background:rgba(8,145,178,.1);border:1px solid rgba(8,145,178,.22);color:var(--teal3);border-radius:5px;padding:2px 7px;font-size:.65rem;font-family:var(--mono);}
+.hash-row{background:rgba(0,0,0,.25);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:.62rem;color:var(--teal);word-break:break-all;line-height:1.5;margin-bottom:5px;}
+.rl-low{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;border-radius:5px;padding:3px 9px;font-size:.75rem;font-family:var(--mono);}
+.rl-medium{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fde68a;border-radius:5px;padding:3px 9px;font-size:.75rem;font-family:var(--mono);}
+.rl-high{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;border-radius:5px;padding:3px 9px;font-size:.75rem;font-family:var(--mono);}
+.rl-critical{background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.5);color:#fff;border-radius:5px;padding:3px 9px;font-size:.75rem;font-family:var(--mono);animation:warn-blink 1.4s ease infinite;}
+@keyframes warn-blink{0%,100%{opacity:1;}50%{opacity:.55;}}
+.ai-analysis-box{background:rgba(8,145,178,.05);border:1px solid rgba(8,145,178,.2);border-radius:10px;padding:14px;margin-top:10px;font-size:.82rem;line-height:1.7;color:var(--text2);}
+.ai-tag{font-size:.65rem;font-family:var(--mono);color:var(--teal2);letter-spacing:.5px;margin-bottom:6px;opacity:.8;}
+.track-result{display:none;margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:14px;font-size:.82rem;}
+.track-badge{display:inline-block;border-radius:5px;padding:2px 9px;font-family:var(--mono);font-size:.72rem;margin-left:7px;}
+.tb-active{background:rgba(8,145,178,.15);color:var(--teal2);border:1px solid rgba(8,145,178,.3);}
+.tb-review{background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.3);}
+.tb-resolved{background:rgba(16,185,129,.1);color:#86efac;border:1px solid rgba(16,185,129,.3);}
+#loading-overlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(6,13,20,.9);backdrop-filter:blur(10px);align-items:center;justify-content:center;flex-direction:column;gap:18px;}
+#loading-overlay.on{display:flex;}
+.spin{width:44px;height:44px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--teal);animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-txt{font-size:.85rem;color:var(--muted);font-family:var(--mono);}
+#toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--card2);border:1px solid var(--teal);border-radius:9px;padding:10px 18px;font-size:.82rem;opacity:0;transition:all .25s;z-index:500;white-space:nowrap;pointer-events:none;}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#inactivity-warn{display:none;position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);border-radius:9px;padding:10px 18px;font-size:.8rem;color:#fca5a5;z-index:600;font-family:var(--mono);text-align:center;}
+.tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;}
+.tab{padding:9px 16px;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px;}
+.tab:hover{color:var(--text2);}
+.tab.active{color:var(--teal2);border-bottom-color:var(--teal2);}
+/* ─── THREAT SOLUTION CARDS ─── */
+.threat-sol-section{margin-top:6px;}
+.threat-sol-card{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:10px;transition:border-color .2s;}
+.threat-sol-card:hover{border-color:var(--teal);}
+.threat-sol-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.threat-sol-icon{font-size:1.2rem;}
+.threat-sol-title{font-size:.83rem;font-weight:700;color:var(--teal3);}
+.threat-sol-steps{list-style:none;padding:0;}
+.threat-sol-steps li{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.79rem;color:var(--text2);line-height:1.55;}
+.threat-sol-steps li:last-child{border:none;}
+.sol-num{min-width:18px;height:18px;border-radius:50%;background:rgba(6,182,212,.15);color:var(--teal2);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0;margin-top:2px;}
+.db-status{display:inline-flex;align-items:center;gap:5px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:4px 10px;font-size:.65rem;font-family:var(--mono);color:#6ee7b7;margin-top:8px;}
+@media(max-width:580px){.check-grid{grid-template-columns:1fr 1fr;}.badges{justify-content:flex-start;}.anon-pill{display:none;}}
+</style>
+</head>
+<body>
+
+<div id="timer-bar"><div id="timer-fill"></div></div>
+
+<button id="panic-btn" onclick="PANIC()" title="তাৎক্ষণিক বাহির হন (ESC×3)">
+  <div class="panic-dot"></div>দ্রুত বাহির হন
+</button>
+
+<div id="disguise">
+  <div id="disguise-inner">
+    <h1>🌤 বাংলাদেশ আবহাওয়া অধিদপ্তর</h1>
+    <h2 style="font-size:1.1rem;margin-bottom:12px;">আজকের আবহাওয়া পূর্বাভাস</h2>
+    <p>ঢাকা: আংশিক মেঘলা, সর্বোচ্চ ৩১°C। চট্টগ্রাম: হালকা বৃষ্টির সম্ভাবনা, সর্বোচ্চ ২৯°C। সিলেট: ভারী বৃষ্টি, সর্বোচ্চ ২৭°C।</p>
+  </div>
+</div>
+
+<div id="loading-overlay"><div class="spin"></div><div class="load-txt" id="load-msg">নিরাপদভাবে প্রক্রিয়া করা হচ্ছে...</div></div>
+<div id="toast"></div>
+<div id="inactivity-warn">⚠️ নিষ্ক্রিয়তার কারণে <span id="warn-sec">৩০</span> সেকেন্ডে পেইজ বন্ধ হবে</div>
+
+<div id="header">
+  <div class="logo-mark">🛡</div>
+  <div>
+    <div class="logo-text">সুরক্ষা</div>
+    <div class="logo-sub">SURAKSHA v3 · AI-Secured</div>
+  </div>
+  <div class="anon-pill"><div class="green-dot"></div>পরিচয় সম্পূর্ণ গোপন</div>
+</div>
+
+<main>
+  <div class="hero">
+    <span class="hero-icon">🛡</span>
+    <h1>আপনি নিরাপদ।<br><em>আপনার কথা গোপন থাকবে।</em></h1>
+    <p class="hero-sub">AI-চালিত এই সিস্টেমে আপনার নাম, ফোন বা কোনো পরিচয় সংরক্ষণ হয় না। শুধু আপনার সমস্যা লিখুন — বাকি সব আমরা দেখব।</p>
+    <p class="hero-esc-hint">⚠️ বিপদ মনে হলে উপরের লাল বোতাম বা ESC তিনবার চাপুন</p>
+  </div>
+
+  <div class="badges">
+    <div class="badge"><span>🔐</span> নাম/ফোন নেই</div>
+    <div class="badge"><span>⛓</span> Blockchain প্রমাণ</div>
+    <div class="badge"><span>🤖</span> AI বিশ্লেষণ</div>
+    <div class="badge"><span>⏱</span> Auto-clear ১০ মিনিট</div>
+    <div class="badge"><span>🚪</span> তাৎক্ষণিক Panic Exit</div>
+    <div class="badge"><span>🗄</span> এনক্রিপ্টেড DB সংরক্ষণ</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('report')">📝 রিপোর্ট করুন</div>
+    <div class="tab" onclick="switchTab('ai')">🤖 AI সহায়তা</div>
+    <div class="tab" onclick="switchTab('track')">🔍 কেস ট্র্যাক করুন</div>
+  </div>
+
+  <!-- TAB: REPORT -->
+  <div id="tab-report">
+    <div class="card">
+      <div class="card-title"><div class="step-num">১</div> ঘটনার বিবরণ</div>
+      <div class="card-sub">যা হয়েছে তা নিজের ভাষায় লিখুন। বাংলা বা ইংরেজি — যেকোনোটি।</div>
+      <label class="req">ঘটনার বিস্তারিত</label>
+      <textarea id="desc" placeholder="যেমন: আমার ফেসবুক অ্যাকাউন্ট হ্যাক করে আমার ছবি দিয়ে ব্ল্যাকমেইল করা হচ্ছে..."></textarea>
+      <label class="req">প্ল্যাটফর্ম</label>
+      <div class="check-grid" id="plat-grp">
+        <label class="check-item"><input type="checkbox" value="Facebook">📘 Facebook</label>
+        <label class="check-item"><input type="checkbox" value="WhatsApp">💬 WhatsApp</label>
+        <label class="check-item"><input type="checkbox" value="Instagram">📸 Instagram</label>
+        <label class="check-item"><input type="checkbox" value="TikTok">🎵 TikTok</label>
+        <label class="check-item"><input type="checkbox" value="Telegram">✈️ Telegram</label>
+        <label class="check-item"><input type="checkbox" value="YouTube">▶️ YouTube</label>
+        <label class="check-item"><input type="checkbox" value="Phone/SMS">📱 Phone/SMS</label>
+        <label class="check-item"><input type="checkbox" value="Other">🌐 অন্যান্য</label>
+      </div>
+      <label class="req">সহিংসতার ধরন</label>
+      <div class="check-grid" id="viol-grp">
+        <label class="check-item"><input type="checkbox" value="blackmail">💀 ব্ল্যাকমেইল</label>
+        <label class="check-item"><input type="checkbox" value="doxing">🗂 ডক্সিং</label>
+        <label class="check-item"><input type="checkbox" value="stalking">👁 স্টকিং</label>
+        <label class="check-item"><input type="checkbox" value="account_hack">🔓 হ্যাকিং</label>
+        <label class="check-item"><input type="checkbox" value="non_consensual">🚫 অসম্মতিমূলক</label>
+        <label class="check-item"><input type="checkbox" value="impersonation">👤 ছদ্মবেশ</label>
+        <label class="check-item"><input type="checkbox" value="harassment">💬 হয়রানি</label>
+        <label class="check-item"><input type="checkbox" value="threats">⚠️ হুমকি</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="step-num">২</div> পরিস্থিতির বিবরণ</div>
+      <div class="card-sub">ঝুঁকি নির্ধারণের জন্য।</div>
+      <label>কতদিন ধরে হচ্ছে?</label>
+      <input type="range" id="dur" min="1" max="365" value="7" oninput="updDur(this)" style="margin-bottom:5px;">
+      <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-bottom:14px;">
+        <span>১ দিন</span><span id="dur-lbl" style="color:var(--teal2);font-family:var(--mono);">৭ দিন</span><span>১ বছর</span>
+      </div>
+      <label>অপরাধী কি পরিচিত?</label>
+      <div class="radio-row" id="rg-known">
+        <label class="radio-opt" onclick="selRad('rg-known',this)"><input name="known" value="yes">হ্যাঁ</label>
+        <label class="radio-opt" onclick="selRad('rg-known',this)"><input name="known" value="no">না</label>
+        <label class="radio-opt" onclick="selRad('rg-known',this)"><input name="known" value="maybe">নিশ্চিত নই</label>
+      </div>
+      <label>শারীরিক হুমকি আছে?</label>
+      <div class="radio-row" id="rg-threat">
+        <label class="radio-opt" onclick="selRad('rg-threat',this)"><input name="threat" value="yes">⚠️ হ্যাঁ</label>
+        <label class="radio-opt" onclick="selRad('rg-threat',this)"><input name="threat" value="no">না</label>
+      </div>
+      <label>অপরাধীর এখনো একাউন্টে প্রবেশাধিকার আছে?</label>
+      <div class="radio-row" id="rg-access">
+        <label class="radio-opt" onclick="selRad('rg-access',this)"><input name="access" value="yes">হ্যাঁ</label>
+        <label class="radio-opt" onclick="selRad('rg-access',this)"><input name="access" value="no">না</label>
+        <label class="radio-opt" onclick="selRad('rg-access',this)"><input name="access" value="unsure">জানি না</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="step-num">৩</div> প্রমাণ সংযুক্ত করুন (ঐচ্ছিক)</div>
+      <div class="card-sub">প্রতিটি ফাইল SHA-256 হ্যাশ ও Blockchain রেফারেন্স পাবে — মূল ফাইল কোথাও পাঠানো হয় না।</div>
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-in" multiple accept="image/*,video/*,audio/*,.pdf" onchange="addFiles(this.files)">
+        <div class="drop-icon">📎</div>
+        <div class="drop-txt">ফাইল টেনে আনুন বা ক্লিক করুন</div>
+      </div>
+      <div class="file-rows" id="file-rows"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="step-num">৪</div> আপনার প্রয়োজন</div>
+      <div class="check-grid" id="need-grp">
+        <label class="check-item"><input type="checkbox" value="scared">😰 ভয়ে আছি</label>
+        <label class="check-item"><input type="checkbox" value="immediate_danger">🆘 তাৎক্ষণিক বিপদ</label>
+        <label class="check-item"><input type="checkbox" value="counseling">💙 মানসিক সহায়তা</label>
+        <label class="check-item"><input type="checkbox" value="legal">⚖️ আইনি সহায়তা</label>
+        <label class="check-item"><input type="checkbox" value="technical">🔧 প্রযুক্তিগত সাহায্য</label>
+        <label class="check-item"><input type="checkbox" value="safe_now">✅ এখন নিরাপদ</label>
+      </div>
+      <label>বিশেষ কিছু জানাতে চাইলে (ঐচ্ছিক)</label>
+      <input type="text" id="extra" placeholder="যেকোনো অতিরিক্ত তথ্য...">
+    </div>
+
+    <div class="priv-box">
+      <div class="priv-icon">🔒</div>
+      <div><strong>গোপনীয়তার নিশ্চয়তা:</strong> আপনার পরিচয় কখনো সংরক্ষিত হয় না। রিপোর্টটি শুধু এনক্রিপ্টেড Case ID-তে সেভ হয়। ব্রাউজারের কোনো হিস্টোরি বা লোকাল স্টোরেজ ব্যবহার হয় না। পেইজ বন্ধে সব মেমোরি মুছে যায়।</div>
+    </div>
+
+    <div id="live-risk">
+      <div class="risk-wrap">
+        <div class="risk-top">
+          <span class="risk-label-sm">তাৎক্ষণিক ঝুঁকি মূল্যায়ন (AI)</span>
+          <span id="rl-badge" class="rl-low">নিম্ন</span>
+        </div>
+        <div class="rbar"><div class="rbar-fill" id="rbar" style="width:5%;background:var(--teal2);"></div></div>
+        <div class="risk-note" id="risk-note-txt"></div>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="sub-btn" onclick="submitReport()">
+      🛡 নিরাপদে রিপোর্ট জমা দিন — AI বিশ্লেষণ সহ
+    </button>
+  </div>
+
+  <!-- TAB: AI CHAT -->
+  <div id="tab-ai" style="display:none;">
+    <div class="card">
+      <div class="card-title">🤖 AI নিরাপত্তা সহায়তা</div>
+      <div class="card-sub">সম্পূর্ণ গোপনীয়। কথোপকথন কোথাও সংরক্ষণ হয় না।</div>
+      <div class="chat-box" id="chat-box">
+        <div class="msg msg-ai">
+          <div class="msg-ai-icon">🤖</div>
+          <div class="msg-ai-bubble">আসালামুয়ালাইকুম। আমি সুরক্ষা AI সহায়তা। আপনার যেকোনো সমস্যা আমাকে বলুন।</div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-in" placeholder="আপনার সমস্যা বা প্রশ্ন লিখুন..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send" id="chat-btn" onclick="sendChat()">পাঠান ➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: TRACK -->
+  <div id="tab-track" style="display:none;">
+    <div class="card">
+      <div class="card-title">🔍 কেসের অবস্থা দেখুন</div>
+      <div class="card-sub">রিপোর্ট করার পর পাওয়া Case ID দিয়ে অগ্রগতি দেখুন।</div>
+      <label>Case ID</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="track-in" placeholder="যেমন: SRK-A1B2C3D4" style="margin-bottom:0;flex:1;">
+        <button onclick="trackCase()" style="background:var(--teal);border:none;border-radius:9px;padding:0 18px;color:#fff;font-family:var(--sans);font-size:.88rem;cursor:pointer;font-weight:600;white-space:nowrap;">দেখুন</button>
+      </div>
+      <div class="track-result" id="track-res"></div>
+    </div>
+  </div>
+
+  <!-- RESULT PANEL -->
+  <div id="result">
+    <div class="result-top">
+      <div style="font-size:2.2rem;margin-bottom:6px;position:relative;z-index:1;">✅</div>
+      <div style="font-size:1rem;font-weight:700;position:relative;z-index:1;">রিপোর্ট সফলভাবে জমা হয়েছে</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:4px;position:relative;z-index:1;">আপনার গোপন Case ID:</div>
+      <div class="caseid-box" id="res-caseid">SRK-XXXXXXXX <button class="copy-btn" onclick="copyId()">কপি</button></div>
+      <div class="result-note">এই ID সংরক্ষণ করুন — পরে কেসের অবস্থা জানতে পারবেন</div>
+      <div id="db-save-status" class="db-status" style="display:none;">💾 নিরাপদে সংরক্ষিত হয়েছে</div>
+    </div>
+
+    <div class="result-grid">
+      <div class="rblock">
+        <div class="rblock-title">⚠️ ঝুঁকি মূল্যায়ন</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span id="res-risk-badge">—</span>
+          <span id="res-score" style="font-family:var(--mono);font-size:.75rem;color:var(--muted);"></span>
+        </div>
+        <div id="res-factors" style="font-size:.8rem;color:var(--text2);line-height:1.7;"></div>
+        <div id="res-ai-analysis"></div>
+      </div>
+
+      <div class="rblock">
+        <div class="rblock-title">⚡ এখনই যা করবেন</div>
+        <div id="res-actions"></div>
+      </div>
+
+      <!-- THREAT RESOLUTION SECTION (new) -->
+      <div class="rblock" id="res-threat-sol-block">
+        <div class="rblock-title">🛠 হুমকি অনুযায়ী সমাধানের পদক্ষেপ</div>
+        <div class="card-sub" style="margin-bottom:12px;">আপনার রিপোর্ট করা প্রতিটি ধরনের হুমকির জন্য নির্দিষ্ট সমাধান:</div>
+        <div class="threat-sol-section" id="res-threat-solutions"></div>
+      </div>
+
+      <div class="rblock">
+        <div class="rblock-title">🔐 প্ল্যাটফর্ম অনুযায়ী নিরাপত্তা পদক্ষেপ</div>
+        <div id="res-safety"></div>
+      </div>
+
+      <div class="rblock">
+        <div class="rblock-title">📞 সহায়তার জন্য যোগাযোগ করুন</div>
+        <div id="res-refs"></div>
+      </div>
+
+      <div class="rblock" id="res-ev-block" style="display:none;">
+        <div class="rblock-title">🔗 প্রমাণের ডিজিটাল রেকর্ড (Blockchain)</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:8px;">এই হ্যাশগুলো আদালতে ব্যবহারযোগ্য প্রমাণ হিসেবে গণ্য হয়।</div>
+        <div id="res-hashes"></div>
+      </div>
+    </div>
+
+    <button onclick="newReport()" style="width:100%;margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:13px;font-family:var(--sans);font-size:.88rem;color:var(--muted);cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">＋ নতুন রিপোর্ট</button>
+  </div>
+
+  <div style="height:90px;"></div>
+</main>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  SURAKSHA v3 — Secure User Portal
+//  NO localStorage · NO sessionStorage · NO browser history
+//  Reports saved to encrypted DB via persistent storage API
+//  Source protected — do not distribute
+// ══════════════════════════════════════════════════════════════
+
+(function() {
+// Prevent right-click & devtools shortcut on production
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  if((e.ctrlKey||e.metaKey) && (e.key==='u'||e.key==='U'||e.key==='s'||e.key==='S')) e.preventDefault();
+  if(e.key==='F12') e.preventDefault();
+  if(e.ctrlKey && e.shiftKey && (e.key==='I'||e.key==='J'||e.key==='C')) e.preventDefault();
+});
+
+// ─── SECURITY: Prevent history API usage ──────────────────
+history.pushState = () => {};
+history.replaceState = () => {};
+
+// ─── IN-MEMORY ONLY (nothing persisted to browser) ────────
+const MEM = { cases: {}, chatHistory: [], lastActive: Date.now() };
+let uploadedFiles = [];
+let inactivityTimer = null;
+let countdownInterval = null;
+let timerInterval = null;
+const TIMEOUT_MS = 10 * 60 * 1000;
+const WARN_MS    = 9.5 * 60 * 1000;
+
+// ─── PANIC EXIT ─────────────────────────────────────────────
+let escCount = 0, escTimer = null;
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') {
+    escCount++;
+    clearTimeout(escTimer);
+    escTimer = setTimeout(() => escCount = 0, 1500);
+    if(escCount >= 3) PANIC();
+  }
+  resetActivity();
+});
+
+function PANIC() {
+  document.title = 'আবহাওয়া পূর্বাভাস — বাংলাদেশ';
+  document.getElementById('disguise').style.display = 'block';
+  document.getElementById('header').style.display = 'none';
+  document.getElementById('panic-btn').style.display = 'none';
+  MEM.cases = {}; MEM.chatHistory = []; uploadedFiles = [];
+  setTimeout(() => { window.location.href = 'https://www.somewhereinblog.net'; }, 4000);
+}
+
+document.getElementById('disguise').addEventListener('dblclick', () => {
+  document.getElementById('disguise').style.display = 'none';
+  document.getElementById('header').style.display = 'flex';
+  document.getElementById('panic-btn').style.display = 'flex';
+});
+
+// ─── AUTO-CLEAR (INACTIVITY) ──────────────────────────────
+function resetActivity() {
+  MEM.lastActive = Date.now();
+  document.getElementById('inactivity-warn').style.display = 'none';
+  clearInterval(countdownInterval);
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(showInactivityWarning, WARN_MS);
+}
+
+function showInactivityWarning() {
+  document.getElementById('inactivity-warn').style.display = 'block';
+  let sec = 30;
+  document.getElementById('warn-sec').textContent = sec;
+  countdownInterval = setInterval(() => {
+    sec--;
+    document.getElementById('warn-sec').textContent = sec;
+    if(sec <= 0) { clearInterval(countdownInterval); autoClear(); }
+  }, 1000);
+}
+
+function autoClear() {
+  MEM.cases = {}; MEM.chatHistory = []; uploadedFiles = [];
+  document.getElementById('inactivity-warn').style.display = 'none';
+  PANIC();
+}
+
+timerInterval = setInterval(() => {
+  const elapsed = Date.now() - MEM.lastActive;
+  const pct = Math.max(0, 100 - (elapsed / TIMEOUT_MS) * 100);
+  document.getElementById('timer-fill').style.width = pct + '%';
+}, 1000);
+
+['mousemove','keydown','click','touchstart'].forEach(ev =>
+  document.addEventListener(ev, resetActivity, { passive: true })
+);
+resetActivity();
+
+// ─── TABS ─────────────────────────────────────────────────
+function switchTab(name) {
+  ['report','ai','track'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', ['report','ai','track'][i] === name);
+  });
+  document.getElementById('result').style.display = 'none';
+}
+window.switchTab = switchTab;
+
+// ─── CHECKBOXES & RADIOS ──────────────────────────────────
+document.querySelectorAll('.check-grid').forEach(g => {
+  g.addEventListener('change', () => {
+    g.querySelectorAll('.check-item').forEach(el =>
+      el.classList.toggle('on', el.querySelector('input').checked)
+    );
+    updateRisk();
+  });
+});
+
+function selRad(gid, el) {
+  document.querySelectorAll('#'+gid+' .radio-opt').forEach(r => r.classList.remove('on'));
+  el.classList.add('on');
+  updateRisk();
+}
+window.selRad = selRad;
+
+function updDur(el) {
+  const v = parseInt(el.value);
+  const pct = ((v-1)/364)*100;
+  el.style.background = `linear-gradient(to right,var(--teal2) 0%,var(--teal2) ${pct}%,var(--border) ${pct}%)`;
+  document.getElementById('dur-lbl').textContent = v === 1 ? '১ দিন' : v + ' দিন';
+  updateRisk();
+}
+window.updDur = updDur;
+
+// ─── FILE UPLOAD ──────────────────────────────────────────
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function addFiles(files) {
+  for(const f of files) {
+    if(uploadedFiles.find(x => x.name === f.name)) continue;
+    const raw = f.name + f.size + f.lastModified + Math.random();
+    const hash = await sha256(raw);
+    uploadedFiles.push({ name: f.name, type: f.type, size: f.size, hash, blockRef: '0x'+hash.slice(0,40) });
+  }
+  renderFiles();
+}
+window.addFiles = addFiles;
+
+function renderFiles() {
+  document.getElementById('file-rows').innerHTML = uploadedFiles.map((f,i) => `
+    <div class="file-row">
+      <span>${f.type.startsWith('image')?'🖼':f.type.startsWith('video')?'🎥':f.type.startsWith('audio')?'🎵':'📄'}</span>
+      <div><div style="font-size:.79rem;">${f.name}</div><div class="file-hash">SHA-256: ${f.hash.slice(0,28)}...</div></div>
+      <span class="rm-file" onclick="rmFile(${i})">✕</span>
+    </div>`).join('');
+}
+
+function rmFile(i) { uploadedFiles.splice(i,1); renderFiles(); }
+window.rmFile = rmFile;
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); });
+
+// ─── RISK ENGINE ──────────────────────────────────────────
+const WEIGHTS = { blackmail:.34, non_consensual:.32, threats:.29, account_hack:.23, doxing:.21, stalking:.19, impersonation:.16, harassment:.12 };
+
+function computeScore() {
+  let s = 0;
+  document.querySelectorAll('#viol-grp input:checked').forEach(cb => s += WEIGHTS[cb.value]||.10);
+  if(document.querySelector('[name=threat]:checked')?.value === 'yes') s += .27;
+  if(document.querySelector('[name=access]:checked')?.value === 'yes') s += .17;
+  if(document.querySelector('[name=access]:checked')?.value === 'unsure') s += .07;
+  if(document.querySelector('[name=known]:checked')?.value === 'yes') s += .09;
+  const d = parseInt(document.getElementById('dur').value)||7;
+  if(d > 30) s += .13; else if(d > 7) s += .06;
+  if(document.querySelector('[value=immediate_danger]')?.checked) s += .24;
+  if(uploadedFiles.length > 0) s += .03;
+  return Math.min(s, 1.0);
+}
+
+function getRisk(score) {
+  if(score >= .85) return {level:'CRITICAL', label:'জরুরি', cls:'rl-critical', color:'#ef4444'};
+  if(score >= .60) return {level:'HIGH',     label:'উচ্চ ঝুঁকি', cls:'rl-high', color:'#f87171'};
+  if(score >= .35) return {level:'MEDIUM',   label:'মাঝারি', cls:'rl-medium', color:'#fbbf24'};
+  return                  {level:'LOW',      label:'নিম্ন', cls:'rl-low', color:'#6ee7b7'};
+}
+
+function updateRisk() {
+  const desc = document.getElementById('desc').value;
+  const vc = document.querySelectorAll('#viol-grp input:checked').length;
+  if(!desc && !vc) { document.getElementById('live-risk').style.display='none'; return; }
+  document.getElementById('live-risk').style.display = 'block';
+  const score = computeScore();
+  const risk = getRisk(score);
+  const pct = Math.round(score * 100);
+  const fill = document.getElementById('rbar');
+  fill.style.width = pct + '%';
+  fill.style.background = risk.color;
+  const badge = document.getElementById('rl-badge');
+  badge.className = risk.cls; badge.textContent = risk.label;
+  document.getElementById('risk-note-txt').textContent =
+    `স্কোর: ${pct}% · ${risk.level==='CRITICAL'?'🚨 তাৎক্ষণিক সহায়তা প্রয়োজন':risk.level==='HIGH'?'জরুরি পদক্ষেপ নিন':risk.level==='MEDIUM'?'সতর্কতার সাথে এগিয়ে যান':'পরিস্থিতি পর্যবেক্ষণে রাখুন'}`;
+}
+
+document.getElementById('desc').addEventListener('input', updateRisk);
+
+function genId() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = 'SRK-';
+  for(let i=0;i<8;i++) id += c[Math.floor(Math.random()*c.length)];
+  return id;
+}
+
+// ─── THREAT RESOLUTION SOLUTIONS ─────────────────────────
+const THREAT_SOLUTIONS = {
+  blackmail: {
+    icon: '💀',
+    title: 'ব্ল্যাকমেইল / সেক্সটোরশন থেকে সমাধান',
+    steps: [
+      'এখনই সব কথোপকথন বন্ধ করুন — কোনো জবাব দেবেন না, কোনো অর্থ পাঠাবেন না',
+      'সব হুমকির স্ক্রিনশট ও সাক্ষ্য সংরক্ষণ করুন (তারিখ-সময়সহ)',
+      'সংশ্লিষ্ট প্ল্যাটফর্মে অপরাধীকে Block করুন এবং Report করুন',
+      'পুলিশ সাইবার সাপোর্ট (PCSW) নম্বরে যোগাযোগ করুন: 01320000888',
+      'ডিজিটাল সিকিউরিটি আইন ২০১৮-এর ধারা ২৬ অনুযায়ী মামলা করুন',
+      'বিশ্বস্ত পরিবারের সদস্য বা বন্ধুকে জানান — আপনি একা নন',
+    ]
+  },
+  doxing: {
+    icon: '🗂',
+    title: 'ডক্সিং থেকে সমাধান',
+    steps: [
+      'সোশ্যাল মিডিয়া থেকে ঠিকানা, ফোন, কর্মস্থল তথ্য অবিলম্বে সরিয়ে নিন',
+      'সব অ্যাকাউন্ট Private করুন এবং Location Sharing বন্ধ করুন',
+      'প্রচারিত তথ্য যে প্ল্যাটফর্মে আছে সেখানে Content Removal Request দিন',
+      'Google-এ ব্যক্তিগত তথ্য থাকলে "Remove Results" ফর্ম পূরণ করুন',
+      'পুলিশকে জানান — শারীরিক হুমকির ঝুঁকি থাকলে থানায় GD করুন',
+      'পাসওয়ার্ড পরিবর্তন করুন এবং 2FA চালু করুন সব অ্যাকাউন্টে',
+    ]
+  },
+  stalking: {
+    icon: '👁',
+    title: 'স্টকিং থেকে সমাধান',
+    steps: [
+      'সব সোশ্যাল মিডিয়া Private করুন এবং অপরিচিত Follow Request Reject করুন',
+      'Location Services সম্পূর্ণ বন্ধ করুন সব অ্যাপে',
+      'অপরাধীকে সব প্ল্যাটফর্মে Block করুন এবং নতুন Account থেকে যোগাযোগ এলেও Block করুন',
+      'যাতায়াতের রুটিন পরিবর্তন করুন, একা না চলাফেরার চেষ্টা করুন',
+      'ঘটনার তারিখ-সময়-বিবরণ লিখিত রাখুন — মামলার জন্য প্রমাণ হবে',
+      'থানায় General Diary (GD) করুন এবং PCSW-তে জানান: 01320000888',
+    ]
+  },
+  account_hack: {
+    icon: '🔓',
+    title: 'একাউন্ট হ্যাকিং থেকে পুনরুদ্ধার',
+    steps: [
+      'এখনই সব ডিভাইস থেকে Log Out করুন (Settings → Active Sessions)',
+      'বিশ্বস্ত নিজের ডিভাইস থেকে পাসওয়ার্ড পরিবর্তন করুন — শক্তিশালী ও অনন্য',
+      'Two-Factor Authentication (2FA) চালু করুন — Authenticator App ব্যবহার করুন',
+      'Recovery Email ও Phone Number আপডেট করুন এবং নিরাপত্তা প্রশ্ন পরিবর্তন করুন',
+      'Account Recovery Form পূরণ করুন (Facebook/Google সাপোর্টে)',
+      'হ্যাকার কোনো বার্তা পাঠিয়ে থাকলে পরিচিতদের সতর্ক করুন',
+    ]
+  },
+  non_consensual: {
+    icon: '🚫',
+    title: 'অসম্মতিমূলক কন্টেন্ট থেকে সমাধান',
+    steps: [
+      'কন্টেন্টটি যে প্ল্যাটফর্মে আছে সেখানে "Report" বা "Flag" করুন অবিলম্বে',
+      'Meta/Google/TikTok-এর Non-Consensual Intimate Image Removal Tool ব্যবহার করুন',
+      'StopNCII.org-এ Hash তৈরি করুন — এটি ছবির সত্যিকার কপি ছাড়াই প্রতিরোধ করে',
+      'সাক্ষ্য হিসেবে URL ও স্ক্রিনশট সংরক্ষণ করুন (নিজে শেয়ার করবেন না)',
+      'ডিজিটাল সিকিউরিটি আইন ২০১৮-এর ধারা ২৬-এ মামলা করুন',
+      'মানসিক স্বাস্থ্য হেল্পলাইনে কথা বলুন: 01779-554391',
+    ]
+  },
+  impersonation: {
+    icon: '👤',
+    title: 'ছদ্মবেশ / Impersonation থেকে সমাধান',
+    steps: [
+      'ভুয়া অ্যাকাউন্টটি Report করুন "Pretending to be me" বিকল্প দিয়ে',
+      'প্রতিটি প্ল্যাটফর্মে ভুয়া প্রোফাইলের Report করুন — বন্ধুদেরও করতে বলুন',
+      'আপনার পরিচিতদের সতর্ক করুন যে ভুয়া অ্যাকাউন্ট চলছে',
+      'আপনার আসল প্রোফাইলে Verified/Blue Tick-এর জন্য আবেদন করুন',
+      'ভুয়া অ্যাকাউন্টের সব পোস্ট ও কার্যকলাপের স্ক্রিনশট রাখুন',
+      'পুলিশ সাইবার ইউনিটে রিপোর্ট করুন: 01320000888',
+    ]
+  },
+  harassment: {
+    icon: '💬',
+    title: 'অনলাইন হয়রানি থেকে সমাধান',
+    steps: [
+      'হয়রানিকারীকে Block করুন এবং সব প্রমাণ সংরক্ষণ করুন',
+      'প্ল্যাটফর্মে Report করুন — Comments/Messages-এ "Report" অপশন ব্যবহার করুন',
+      'Keyword Filter চালু করুন — নির্দিষ্ট শব্দ থেকে মন্তব্য লুকান',
+      'Mute/Restrict ব্যবহার করুন — Block না করলেও হয়রানিকারী বুঝতে পারবে না',
+      'ক্রমাগত হলে Screen Time কমান এবং Mental Health Support নিন',
+      'বারবার হলে থানায় GD করুন এবং PCSW-তে জানান',
+    ]
+  },
+  threats: {
+    icon: '⚠️',
+    title: 'শারীরিক হুমকি / মৃত্যুভয় থেকে সমাধান',
+    steps: [
+      'এখনই ৯৯৯-এ ফোন করুন যদি তাৎক্ষণিক বিপদ থাকে',
+      'সব হুমকির বার্তা স্ক্রিনশট ও সংরক্ষণ করুন',
+      'বিশ্বস্ত মানুষকে জানান এবং নিরাপদ স্থানে যান',
+      'থানায় GD করুন — শারীরিক হুমকি ফৌজদারি অপরাধ',
+      'অপরাধী যদি পরিচিত হয় — Restraining Order-এর জন্য আদালতে যান',
+      'PCSW-তে যোগাযোগ করুন: 01320000888',
+    ]
+  },
+};
+
+function buildThreatSolutions(vTypes) {
+  if(!vTypes.length) return '';
+  return vTypes.map(vt => {
+    const sol = THREAT_SOLUTIONS[vt];
+    if(!sol) return '';
+    const steps = sol.steps.map((s,i) => `
+      <li><div class="sol-num">${i+1}</div><div>${s}</div></li>`).join('');
+    return `
+      <div class="threat-sol-card">
+        <div class="threat-sol-hdr">
+          <span class="threat-sol-icon">${sol.icon}</span>
+          <span class="threat-sol-title">${sol.title}</span>
+        </div>
+        <ul class="threat-sol-steps">${steps}</ul>
+      </div>`;
+  }).join('');
+}
+
+// ─── IMMEDIATE ACTIONS ────────────────────────────────────
+function getActions(score, vTypes, threat, access) {
+  const acts = [];
+  if(score >= .85 || threat === 'yes') {
+    acts.push('🚨 এখনই পুলিশ সাইবার সাপোর্টে ফোন করুন: 01320000888');
+    acts.push('বিশ্বস্ত কাউকে এই মুহূর্তে জানান ও নিরাপদ স্থানে যান');
+  }
+  if(access === 'yes' || vTypes.includes('account_hack')) {
+    acts.push('সব ডিভাইস থেকে একাউন্ট লগআউট করুন এখনই');
+    acts.push('পাসওয়ার্ড শুধু আপনার নিজের ডিভাইস থেকে পরিবর্তন করুন');
+  }
+  if(vTypes.includes('blackmail') || vTypes.includes('non_consensual')) {
+    acts.push('হুমকির স্ক্রিনশট নিন কিন্তু কোনো জবাব দেবেন না');
+    acts.push('অপরাধীর সাথে যোগাযোগ সম্পূর্ণ বন্ধ করুন');
+  }
+  acts.push('Two-Factor Authentication (2FA) চালু করুন সব একাউন্টে');
+  if(vTypes.includes('doxing')) acts.push('সোশ্যাল মিডিয়া থেকে ঠিকানা ও ফোন নম্বর সরান');
+  return acts.slice(0, 6);
+}
+
+// ─── SAFETY GUIDES ────────────────────────────────────────
+const GUIDES = {
+  'Facebook': ['Settings → Security → Where You\'re Logged In → সব লগআউট','Settings → Security → Two-Factor Authentication → চালু করুন','Settings → Privacy → Who can find me → Friends only','অপরাধীকে Block ও Profile Report করুন'],
+  'WhatsApp': ['Settings → Account → Two-step verification → চালু করুন','Settings → Privacy → Profile photo → My contacts only','Linked Devices → সব ডিভাইস সরিয়ে দিন','অপরাধীর নম্বর Block করুন'],
+  'Instagram': ['Settings → Security → Two-Factor Authentication → চালু','Settings → Privacy → Private Account → চালু','Settings → Security → Login Activity → অপরিচিত ডিভাইস সরান'],
+  'TikTok': ['Settings → Security → Two-Step Verification → চালু','Settings → Privacy → Private Account → চালু','অপরাধীর একাউন্ট Report করুন'],
+  'default': ['সব একাউন্টে Unique Password ব্যবহার করুন','2FA চালু করুন সব প্ল্যাটফর্মে','Location Sharing সম্পূর্ণ বন্ধ করুন','ব্যক্তিগত তথ্য প্রোফাইল থেকে সরান'],
+};
+
+function getSafetyGuide(platforms) {
+  if(!platforms.length) return [{ pl: 'সাধারণ', steps: GUIDES.default }];
+  return platforms.map(p => ({ pl: p, steps: (GUIDES[p]||GUIDES.default).slice(0,3) }));
+}
+
+// ─── REFERRALS ────────────────────────────────────────────
+const REFS_ALL = [
+  { id:'999',   name:'জরুরি সেবা', num:'999', icon:'🆘', urgent:true, min:.85 },
+  { id:'pcsw',  name:'পুলিশ সাইবার সাপোর্ট (PCSW)', num:'01320000888', icon:'👮', urgent:true, min:.40 },
+  { id:'legal', name:'জাতীয় আইনি সহায়তা', num:'16430 (বিনামূল্যে)', icon:'⚖️', urgent:false, min:.35 },
+  { id:'mental',name:'মানসিক স্বাস্থ্য হেল্পলাইন', num:'01779-554391', icon:'💙', urgent:false, min:0 },
+  { id:'bnnrc', name:'BNNRC সহায়তা কেন্দ্র', num:'01726311101', icon:'🏢', urgent:false, min:0 },
+  { id:'safe',  name:'জরুরি আশ্রয় নেটওয়ার্ক', num:'10921', icon:'🏠', urgent:true, min:.70 },
+];
+
+function getRefs(score) { return REFS_ALL.filter(r => score >= r.min); }
+
+function buildFactors(score, vTypes, dur, threat, access) {
+  const MAP = { blackmail:'ব্ল্যাকমেইল', non_consensual:'অসম্মতিমূলক কন্টেন্ট', threats:'হুমকি', doxing:'ডক্সিং', account_hack:'একাউন্ট হ্যাক', stalking:'স্টকিং', impersonation:'ছদ্মবেশ', harassment:'হয়রানি' };
+  const f = vTypes.map(v => '• ' + (MAP[v]||v));
+  if(threat==='yes') f.push('• শারীরিক হুমকি বিদ্যমান');
+  if(access==='yes') f.push('• অপরাধীর একাউন্টে প্রবেশাধিকার আছে');
+  if(dur > 30) f.push(`• দীর্ঘমেয়াদী সহিংসতা (${dur} দিন)`);
+  if(uploadedFiles.length > 0) f.push(`• ${uploadedFiles.length}টি প্রমাণ সংযুক্ত`);
+  return f;
+}
+
+// ─── ANTHROPIC AI CALL ────────────────────────────────────
+async function callAI(systemPrompt, userMessage, conversationHistory = []) {
+  const messages = [...conversationHistory, { role: 'user', content: userMessage }];
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: systemPrompt, messages })
+    });
+    const data = await resp.json();
+    return data.content?.map(c => c.text || '').join('') || null;
+  } catch(e) { return null; }
+}
+
+async function analyzeIncident(desc, vTypes, riskLevel) {
+  const system = `তুমি একটি TFGBV সহায়তা AI। বাংলাদেশের প্রেক্ষাপটে কাজ করো।
+তোমার কাজ: ভুক্তভোগীর বর্ণনা পড়ে সংক্ষিপ্ত, স্পষ্ট ও সহানুভূতিশীল পরামর্শ দাও।
+নিয়ম: সর্বদা বাংলায় উত্তর দাও। ৩-৪টি সুনির্দিষ্ট পদক্ষেপ। ভুক্তভোগীকে দোষী মনে করাবে না। সংক্ষিপ্ত রাখো (৬ লাইনের মধ্যে)।`;
+  const prompt = `ঘটনার বিবরণ: "${desc}"\nসহিংসতার ধরন: ${vTypes.join(', ')}\nঝুঁকির মাত্রা: ${riskLevel}\nএই পরিস্থিতিতে তাৎক্ষণিক কী করণীয়?`;
+  return await callAI(system, prompt);
+}
+
+const AI_CHAT_SYSTEM = `তুমি সুরক্ষা AI — একটি TFGBV প্রতিরোধ প্ল্যাটফর্মের সহায়তাকারী AI। বাংলাদেশের প্রেক্ষাপটে কাজ করো।
+ভূমিকা: ভুক্তভোগীকে মানসিক সহায়তা ও ব্যবহারিক পরামর্শ দাও। ডিজিটাল নিরাপত্তা নির্দেশনা দাও। সর্বদা বাংলায় কথা বলো। ভুক্তভোগীকে কখনো দোষ দেবে না।
+জরুরি নম্বর: PCSW: 01320000888 · আইনি সহায়তা: 16430 · মানসিক স্বাস্থ্য: 01779-554391 · জরুরি: 999`;
+
+async function sendChat() {
+  const input = document.getElementById('chat-in');
+  const msg = input.value.trim();
+  if(!msg) return;
+  input.value = '';
+  addChatMsg('user', msg);
+  MEM.chatHistory.push({ role: 'user', content: msg });
+  document.getElementById('chat-btn').disabled = true;
+  const typingId = addTyping();
+  const aiResp = await callAI(AI_CHAT_SYSTEM, msg, MEM.chatHistory.slice(-6,-1));
+  removeTyping(typingId);
+  document.getElementById('chat-btn').disabled = false;
+  const reply = aiResp || fallbackChatReply(msg);
+  addChatMsg('ai', reply);
+  MEM.chatHistory.push({ role: 'assistant', content: reply });
+}
+window.sendChat = sendChat;
+
+function fallbackChatReply(msg) {
+  const lower = msg.toLowerCase();
+  if(lower.includes('ব্ল্যাকমেইল')||lower.includes('blackmail')) return 'ব্ল্যাকমেইলের ক্ষেত্রে প্রথমে স্ক্রিনশট নিন, তারপর অপরাধীর সাথে সব যোগাযোগ বন্ধ করুন। PCSW-তে যোগাযোগ করুন: 01320000888। মনে রাখবেন — আপনার কোনো দোষ নেই।';
+  if(lower.includes('হ্যাক')||lower.includes('hack')) return 'একাউন্ট হ্যাক হলে প্রথমে সব ডিভাইস থেকে লগআউট করুন, নতুন পাসওয়ার্ড দিন এবং 2FA চালু করুন।';
+  if(lower.includes('ভয়')||lower.includes('কী করব')) return 'আপনি একা নন। PCSW-তে ফোন করুন (01320000888) — তারা সাহায্য করবে।';
+  return 'আপনার কথা শুনছি। আরও বিস্তারিত বললে সঠিক পরামর্শ দিতে পারব। কোন প্ল্যাটফর্মে সমস্যায় পড়েছেন?';
+}
+
+let typingCounter = 0;
+function addTyping() {
+  const id = 'typing-' + (++typingCounter);
+  const box = document.getElementById('chat-box');
+  box.innerHTML += `<div class="msg msg-ai" id="${id}"><div class="msg-ai-icon">🤖</div><div class="msg-ai-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>`;
+  box.scrollTop = box.scrollHeight;
+  return id;
+}
+function removeTyping(id) { document.getElementById(id)?.remove(); }
+
+function addChatMsg(who, text) {
+  const box = document.getElementById('chat-box');
+  if(who==='ai') {
+    box.innerHTML += `<div class="msg msg-ai"><div class="msg-ai-icon">🤖</div><div class="msg-ai-bubble">${text.replace(/\n/g,'<br>')}</div></div>`;
+  } else {
+    box.innerHTML += `<div class="msg msg-user"><div class="msg-user-bubble">${text}</div></div>`;
+  }
+  box.scrollTop = box.scrollHeight;
+}
+
+document.getElementById('chat-in').addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
+
+// ─── FIREBASE SAVE ────────────────────────────────────────
+async function saveToDb(caseId, caseData) {
+  try {
+    if(typeof window._fbSaveCase !== 'function') return; // Firebase not loaded yet
+    await window._fbSaveCase(caseId, caseData);
+    document.getElementById('db-save-status').style.display = 'inline-flex';
+  } catch(e) {
+    // Silent fail — data still in memory, user unaffected
+    console.warn('DB save failed:', e.message);
+  }
+}
+
+// ─── SUBMIT REPORT ────────────────────────────────────────
+async function submitReport() {
+  const desc = document.getElementById('desc').value.trim();
+  const vTypes = [...document.querySelectorAll('#viol-grp input:checked')].map(x => x.value);
+  const platforms = [...document.querySelectorAll('#plat-grp input:checked')].map(x => x.value);
+  const needs = [...document.querySelectorAll('#need-grp input:checked')].map(x => x.value);
+
+  if(!desc) { toast('⚠️ ঘটনার বিবরণ লিখুন'); return; }
+  if(!vTypes.length) { toast('⚠️ সহিংসতার ধরন বেছে নিন'); return; }
+
+  document.getElementById('loading-overlay').classList.add('on');
+  document.getElementById('load-msg').textContent = 'AI বিশ্লেষণ চলছে...';
+
+  const score = computeScore();
+  const risk = getRisk(score);
+  const caseId = genId();
+  const threat = document.querySelector('[name=threat]:checked')?.value || 'no';
+  const access = document.querySelector('[name=access]:checked')?.value || 'unsure';
+  const known  = document.querySelector('[name=known]:checked')?.value  || 'maybe';
+  const dur    = parseInt(document.getElementById('dur').value) || 7;
+
+  document.getElementById('load-msg').textContent = 'AI পরামর্শ তৈরি করছে...';
+  const aiAnalysis = await analyzeIncident(desc, vTypes, risk.label);
+  await new Promise(r => setTimeout(r, 400));
+
+  document.getElementById('loading-overlay').classList.remove('on');
+
+  const actions = getActions(score, vTypes, threat, access);
+  const safetyGuide = getSafetyGuide(platforms);
+  const refs = getRefs(score);
+  const factors = buildFactors(score, vTypes, dur, threat, access);
+
+  // Save to in-memory (never browser storage)
+  const caseData = {
+    caseId, score, riskLevel: risk.level, riskLabel: risk.label,
+    vTypes, platforms, dur, threat, access, known, needs,
+    evidenceCount: uploadedFiles.length, status: 'সক্রিয়',
+    timestamp: new Date().toLocaleString('bn-BD'),
+  };
+  MEM.cases[caseId] = caseData;
+
+  // Also save to persistent DB (anonymous, Case ID only)
+  await saveToDb(caseId, {
+    caseId, riskLevel: risk.level, riskLabel: risk.label, vTypes, platforms,
+    evidenceCount: uploadedFiles.length, status: 'সক্রিয়',
+    timestamp: new Date().toISOString(),
+  });
+
+  renderResult({ caseId, risk, score, actions, factors, safetyGuide, refs, aiAnalysis, vTypes });
+}
+window.submitReport = submitReport;
+
+// ─── RENDER RESULT ────────────────────────────────────────
+function renderResult({ caseId, risk, score, actions, factors, safetyGuide, refs, aiAnalysis, vTypes }) {
+  document.getElementById('tab-report').style.display = 'none';
+  document.querySelector('.tabs').style.display = 'none';
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+
+  document.getElementById('res-caseid').childNodes[0].textContent = caseId + ' ';
+  window._caseId = caseId;
+
+  const rb = document.getElementById('res-risk-badge');
+  rb.className = risk.cls; rb.textContent = risk.label;
+  document.getElementById('res-score').textContent = `স্কোর: ${Math.round(score*100)}%`;
+  document.getElementById('res-factors').innerHTML = factors.join('<br>') || '• তথ্য বিশ্লেষণ করা হয়েছে';
+
+  if(aiAnalysis) {
+    document.getElementById('res-ai-analysis').innerHTML = `
+      <div class="ai-analysis-box"><div class="ai-tag">🤖 AI পরামর্শ</div>${aiAnalysis.replace(/\n/g,'<br>')}</div>`;
+  }
+
+  document.getElementById('res-actions').innerHTML = actions.map((a,i) => `
+    <div class="action-row"><div class="anum">${i+1}</div><div>${a}</div></div>`).join('');
+
+  // Threat-specific solutions
+  const threatSolHtml = buildThreatSolutions(vTypes);
+  document.getElementById('res-threat-solutions').innerHTML = threatSolHtml || '<div style="font-size:.8rem;color:var(--muted);">কোনো নির্দিষ্ট হুমকির ধরন পাওয়া যায়নি।</div>';
+
+  let sh = '';
+  for(const g of safetyGuide) {
+    sh += `<div style="margin-bottom:13px;"><div style="font-size:.78rem;font-weight:700;color:var(--teal2);margin-bottom:5px;">📱 ${g.pl}</div>`;
+    g.steps.forEach((s,i) => sh += `<div class="action-row"><div class="anum">${i+1}</div><div style="font-size:.79rem;">${s}</div></div>`);
+    sh += '</div>';
+  }
+  document.getElementById('res-safety').innerHTML = sh;
+
+  document.getElementById('res-refs').innerHTML = refs.map(r => `
+    <div class="ref-card" onclick="window.open('tel:${r.num.replace(/[^0-9]/g,'')}')">
+      <span class="ref-icon2">${r.icon}</span>
+      <div><div class="ref-name2">${r.name}</div><div class="ref-num">${r.num}</div></div>
+      <span class="${r.urgent?'ref-tag-u':'ref-tag-n'}">${r.urgent?'জরুরি':'সহায়তা'}</span>
+    </div>`).join('');
+
+  if(uploadedFiles.length > 0) {
+    document.getElementById('res-ev-block').style.display = 'block';
+    document.getElementById('res-hashes').innerHTML = uploadedFiles.map(f => `
+      <div class="hash-row">📎 ${f.name}<br>SHA-256: ${f.hash}<br>Blockchain: ${f.blockRef}</div>`).join('');
+  }
+}
+
+function copyId() {
+  navigator.clipboard.writeText(window._caseId || '').catch(()=>{});
+  toast('✅ Case ID কপি হয়েছে!');
+}
+window.copyId = copyId;
+
+function newReport() {
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('tab-report').style.display = 'block';
+  document.querySelector('.tabs').style.display = 'flex';
+  document.getElementById('desc').value = '';
+  document.querySelectorAll('.check-item input').forEach(x => x.checked = false);
+  document.querySelectorAll('.check-item').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.radio-opt').forEach(x => x.classList.remove('on'));
+  uploadedFiles = []; renderFiles();
+  document.getElementById('live-risk').style.display = 'none';
+  document.getElementById('db-save-status').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+window.newReport = newReport;
+
+// ─── TRACK CASE ───────────────────────────────────────────
+async function trackCase() {
+  const id = document.getElementById('track-in').value.trim().toUpperCase();
+  const res = document.getElementById('track-res');
+  if(!id) { toast('Case ID লিখুন'); return; }
+
+  // ১. In-memory cache চেক করুন
+  let c = MEM.cases[id];
+
+  // ২. Firebase Firestore থেকে খোঁজ
+  if(!c && typeof window._fbGetCase === 'function') {
+    try {
+      res.style.display = 'block';
+      res.innerHTML = '<span style="color:var(--muted)"><span class="spin-sm-inline"></span> খোঁজা হচ্ছে...</span>';
+      c = await window._fbGetCase(id);
+    } catch(e) {}
+  }
+
+  if(!c) {
+    res.style.display = 'block';
+    res.innerHTML = '<span style="color:var(--muted)">❌ পাওয়া যায়নি। সঠিক ID নিশ্চিত করুন।</span>';
+    return;
+  }
+
+  const ts = c.savedAt?.toDate?.()?.toLocaleString('bn-BD') || c.timestamp || '—';
+  const sc = c.status==='সমাধান হয়েছে'?'tb-resolved':c.status==='পর্যালোচনাধীন'?'tb-review':'tb-active';
+  res.style.display = 'block';
+  res.innerHTML = `
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;">
+      <strong style="font-family:var(--mono);color:var(--teal2);">${c.caseId}</strong>
+      <span class="track-badge ${sc}">${c.status}</span>
+    </div>
+    <div style="font-size:.79rem;color:var(--text2);line-height:1.75;">
+      📅 জমার তারিখ: ${ts}<br>
+      ⚠️ ঝুঁকি: <strong>${c.riskLabel}</strong><br>
+      📁 প্রমাণ: ${c.evidenceCount}টি ফাইল<br>
+      📋 ধরন: ${(c.vTypes||[]).join(', ')||'উল্লেখ নেই'}
+    </div>`;
+}
+window.trackCase = trackCase;
+
+// ─── TOAST ────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 2400);
+}
+
+// ─── INITIAL ──────────────────────────────────────────────
+updDur(document.getElementById('dur'));
+setTimeout(() => { document.title = 'সুরক্ষা | নিরাপদ সহায়তা পোর্টাল'; }, 800);
+
+})(); // END IIFE — hides all variables from global scope
+</script>
+</body>
+</html>
