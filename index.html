@@ -13,11 +13,12 @@
   Project Settings → Your Apps → Firebase SDK snippet
   ═══════════════════════════════════════════════════ -->
 <script type="module">
-import { initializeApp }              from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, setDoc,
-         getDoc, serverTimestamp }    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeApp }                    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc,
+         serverTimestamp }                  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref as sRef,
+         uploadBytes, getDownloadURL }      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-// ── আপনার config এখানে বসান ──────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyBkI1L32ouLDkZbQaXjR5f35HWhsVZ8Kbg",
   authDomain: "suraksha-4f141.firebaseapp.com",
@@ -28,24 +29,51 @@ const firebaseConfig = {
   measurementId: "G-ZD9K5ZQMKZ"
 };
 
-// ─────────────────────────────────────────────────────
+const app     = initializeApp(firebaseConfig);
+const db      = getFirestore(app);
+const storage = getStorage(app);
 
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-// ─── রিপোর্ট সেভ করুন (user portal) ─────────────────
+// ─── রিপোর্ট Firestore-এ সেভ ───────────────────────
 window._fbSaveCase = async function(caseId, data) {
-  await setDoc(doc(db, "cases", caseId), {
-    ...data,
-    savedAt: serverTimestamp(),
-  });
+  await setDoc(doc(db, "cases", caseId), { ...data, savedAt: serverTimestamp() });
 };
 
-// ─── Case ID দিয়ে খোঁজ (track tab) ──────────────────
+// ─── ফাইল Firebase Storage-এ আপলোড ────────────────
+// Storage Rules-এ এটি লাগবে:
+// match /evidence/{caseId}/{file} { allow write: if true; allow read: if true; }
+window._fbUploadFile = async function(caseId, file, hash) {
+  try {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path    = `evidence/${caseId}/${Date.now()}_${safeName}`;
+    const fileRef = sRef(storage, path);
+    // metadata সহ upload করুন
+    const metadata = { contentType: file.type, customMetadata: { originalName: file.name, sha256: hash, caseId } };
+    const snap    = await uploadBytes(fileRef, file, metadata);
+    const url     = await getDownloadURL(snap.ref);
+    return { name: file.name, url, hash, size: file.size, type: file.type, path, uploadedAt: new Date().toISOString() };
+  } catch(storageErr) {
+    // Storage Rules block করলে base64 Firestore-এ সেভ করুন (small files only)
+    if(file.size < 900000) { // 900KB limit
+      const base64 = await new Promise(res => {
+        const r = new FileReader();
+        r.onload = e => res(e.target.result);
+        r.readAsDataURL(file);
+      });
+      return { name: file.name, url: null, base64, hash, size: file.size, type: file.type, storageError: storageErr.message, uploadedAt: new Date().toISOString() };
+    }
+    return { name: file.name, url: null, hash, size: file.size, type: file.type, storageError: storageErr.message };
+  }
+};
+
+// ─── Case ID দিয়ে খোঁজ ──────────────────────────────
 window._fbGetCase = async function(caseId) {
   const snap = await getDoc(doc(db, "cases", caseId));
   return snap.exists() ? snap.data() : null;
 };
+
+// Module loaded signal
+window._firebaseReady = true;
+console.log('✅ ছায়াকবচ Firebase ready');
 </script>
 <style>
 :root{--bg:#060d14;--surface:#0a1520;--card:#0e1e2e;--card2:#122030;--border:#1c3348;--border2:#254460;--teal:#0891b2;--teal2:#06b6d4;--teal3:#67e8f9;--gold:#d97706;--gold2:#f59e0b;--green:#10b981;--red:#ef4444;--red2:#fca5a5;--text:#e0eaf5;--text2:#a8c0d6;--muted:#5a7a96;--mono:'JetBrains Mono',monospace;--sans:'Hind Siliguri',sans-serif;--radius:14px;--shadow:0 8px 32px rgba(0,0,0,.4);}
@@ -206,6 +234,15 @@ select option{background:var(--surface);}
 .sol-num{min-width:18px;height:18px;border-radius:50%;background:rgba(6,182,212,.15);color:var(--teal2);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0;margin-top:2px;}
 .db-status{display:inline-flex;align-items:center;gap:5px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:4px 10px;font-size:.65rem;font-family:var(--mono);color:#6ee7b7;margin-top:8px;}
 @media(max-width:580px){.check-grid{grid-template-columns:1fr 1fr;}.badges{justify-content:flex-start;}.anon-pill{display:none;}}
+/* ── PERPETRATOR CARD ── */
+.perp-card{border-color:rgba(239,68,68,.25) !important;background:linear-gradient(160deg,rgba(239,68,68,.04),var(--card)) !important;}
+.perp-card .card-title{color:#fca5a5;}
+.perp-warn{display:flex;align-items:flex-start;gap:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:9px;padding:11px 13px;font-size:.78rem;color:#fcd34d;margin-bottom:14px;line-height:1.6;}
+textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:var(--sans);font-size:.88rem;outline:none;resize:vertical;min-height:68px;transition:border-color .2s;margin-bottom:14px;}
+textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(8,145,178,.12);}
+.upload-prog{font-size:.68rem;color:var(--teal2);font-family:var(--mono);margin-top:2px;}
+.upload-done{font-size:.68rem;color:#10b981;font-family:var(--mono);margin-top:2px;}
+.upload-err {font-size:.68rem;color:var(--red2);font-family:var(--mono);margin-top:2px;}
 </style>
 </head>
 <body>
@@ -231,8 +268,8 @@ select option{background:var(--surface);}
 <div id="header">
   <div class="logo-mark">🛡</div>
   <div>
-    <div class="logo-text">সুরক্ষা</div>
-    <div class="logo-sub">SURAKSHA v3 · AI-Secured</div>
+    <div class="logo-text">ছায়াকবচ</div>
+    <div class="logo-sub">ছায়াকবচ v1 · AI-Secured</div>
   </div>
   <div class="anon-pill"><div class="green-dot"></div>পরিচয় সম্পূর্ণ গোপন</div>
 </div>
@@ -318,29 +355,109 @@ select option{background:var(--surface);}
       </div>
     </div>
 
+    <!-- ═══ অপরাধীর তথ্য ═══ -->
+    <div class="card perp-card">
+      <div class="card-title"><div class="step-num" style="background:linear-gradient(135deg,#dc2626,#b91c1c);">🚨</div> অপরাধীর তথ্য (যতটুকু জানেন)</div>
+      <div class="perp-warn">
+        🔒 এই তথ্য শুধু নিরাপত্তা কর্মকর্তারা দেখবেন — আপনার নিজের কোনো তথ্য এখানে দেওয়ার দরকার নেই।
+      </div>
+
+      <label>অপরাধীর নাম / পরিচিত নাম (ঐচ্ছিক)</label>
+      <input type="text" id="perp-name" placeholder="যেমন: রাহুল হাসান, admin_999, বা অজানা...">
+
+      <label>অপরাধীর সাথে আপনার সম্পর্ক</label>
+      <div class="radio-row" id="rg-relation" style="flex-wrap:wrap;">
+        <label class="radio-opt" onclick="selRad('rg-relation',this)"><input name="relation" value="unknown">অপরিচিত</label>
+        <label class="radio-opt" onclick="selRad('rg-relation',this)"><input name="relation" value="classmate">সহপাঠী</label>
+        <label class="radio-opt" onclick="selRad('rg-relation',this)"><input name="relation" value="colleague">সহকর্মী</label>
+        <label class="radio-opt" onclick="selRad('rg-relation',this)"><input name="relation" value="expartner">প্রাক্তন সঙ্গী</label>
+        <label class="radio-opt" onclick="selRad('rg-relation',this)"><input name="relation" value="relative">আত্মীয়</label>
+        <label class="radio-opt" onclick="selRad('rg-relation',this)"><input name="relation" value="online_only">শুধু অনলাইনে পরিচিত</label>
+        <label class="radio-opt" onclick="selRad('rg-relation',this)"><input name="relation" value="other">অন্যান্য</label>
+      </div>
+
+      <label>অপরাধীর Social Media / Account লিংক বা ID (ঐচ্ছিক)</label>
+      <textarea id="perp-profiles" placeholder="যেমন:&#10;Facebook: facebook.com/xyz অথবা আইডি নম্বর&#10;WhatsApp: 01XXXXXXXXX&#10;Instagram: @username&#10;TikTok: @handle&#10;Telegram: @handle"></textarea>
+
+      <label>অপরাধীর ফোন নম্বর (ঐচ্ছিক)</label>
+      <input type="text" id="perp-phone" placeholder="যেমন: 01XXXXXXXXX">
+
+      <label>অপরাধীর আনুমানিক অবস্থান বা পরিচয় (ঐচ্ছিক)</label>
+      <input type="text" id="perp-location" placeholder="যেমন: ঢাকা, চট্টগ্রাম বিশ্ববিদ্যালয় শিক্ষার্থী, অজানা...">
+
+      <label>অপরাধী কি একাধিক ব্যক্তি?</label>
+      <div class="radio-row" id="rg-multi">
+        <label class="radio-opt" onclick="selRad('rg-multi',this)"><input name="multi" value="single">একজন</label>
+        <label class="radio-opt" onclick="selRad('rg-multi',this)"><input name="multi" value="multiple">একাধিক</label>
+        <label class="radio-opt" onclick="selRad('rg-multi',this)"><input name="multi" value="unknown">জানি না</label>
+      </div>
+
+      <label>অপরাধীর সম্পর্কে আরও কিছু জানালে (ঐচ্ছিক)</label>
+      <textarea id="perp-extra" placeholder="যেকোনো অতিরিক্ত তথ্য যা কর্মকর্তাদের সাহায্য করতে পারে..."></textarea>
+    </div>
+
     <div class="card">
       <div class="card-title"><div class="step-num">৩</div> প্রমাণ সংযুক্ত করুন (ঐচ্ছিক)</div>
       <div class="card-sub">প্রতিটি ফাইল SHA-256 হ্যাশ ও Blockchain রেফারেন্স পাবে — মূল ফাইল কোথাও পাঠানো হয় না।</div>
       <div class="drop-zone" id="drop-zone">
         <input type="file" id="file-in" multiple accept="image/*,video/*,audio/*,.pdf" onchange="addFiles(this.files)">
         <div class="drop-icon">📎</div>
-        <div class="drop-txt">ফাইল টেনে আনুন বা ক্লিক করুন</div>
+        <div class="drop-txt">স্ক্রিনশট, ভিডিও, অডিও বা PDF টেনে আনুন বা ক্লিক করুন</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:4px;">ফাইলগুলো নিরাপদ সার্ভারে সংরক্ষিত হবে এবং শুধু কর্মকর্তারা দেখতে পাবেন</div>
       </div>
       <div class="file-rows" id="file-rows"></div>
     </div>
 
     <div class="card">
-      <div class="card-title"><div class="step-num">৪</div> আপনার প্রয়োজন</div>
+      <div class="card-title"><div class="step-num">৪</div> বিচারের জন্য গুরুত্বপূর্ণ তথ্য</div>
+      <div class="card-sub">এই তথ্যগুলো আইনি ব্যবস্থা নিতে কর্মকর্তাদের সরাসরি সাহায্য করবে।</div>
+
+      <label>আপনার বয়স শ্রেণী (আইনি সুরক্ষার জন্য)</label>
+      <div class="radio-row" id="rg-age">
+        <label class="radio-opt" onclick="selRad('rg-age',this)"><input name="agegroup" value="minor">অপ্রাপ্তবয়স্ক (১৮ বছরের নিচে)</label>
+        <label class="radio-opt" onclick="selRad('rg-age',this)"><input name="agegroup" value="adult">প্রাপ্তবয়স্ক (১৮+)</label>
+        <label class="radio-opt" onclick="selRad('rg-age',this)"><input name="agegroup" value="prefer_not">জানাতে চাই না</label>
+      </div>
+
+      <label>আগে কি কোথাও রিপোর্ট করা হয়েছে?</label>
+      <div class="check-grid" id="prev-grp">
+        <label class="check-item"><input type="checkbox" value="police_gd">👮 থানায় GD করা হয়েছে</label>
+        <label class="check-item"><input type="checkbox" value="police_case">⚖️ মামলা করা হয়েছে</label>
+        <label class="check-item"><input type="checkbox" value="platform_report">📱 Platform-এ Report করা হয়েছে</label>
+        <label class="check-item"><input type="checkbox" value="ngo">🏢 NGO-তে জানানো হয়েছে</label>
+        <label class="check-item"><input type="checkbox" value="none">❌ কোথাও জানানো হয়নি</label>
+      </div>
+
+      <label>GD/মামলা নম্বর (যদি থাকে)</label>
+      <input type="text" id="case-ref" placeholder="যেমন: GD-৩৪৫/২০২৬ বা মামলা নম্বর...">
+
+      <label>সাক্ষী আছে?</label>
+      <div class="radio-row" id="rg-witness">
+        <label class="radio-opt" onclick="selRad('rg-witness',this)"><input name="witness" value="yes">হ্যাঁ, সাক্ষী আছে</label>
+        <label class="radio-opt" onclick="selRad('rg-witness',this)"><input name="witness" value="no">না</label>
+        <label class="radio-opt" onclick="selRad('rg-witness',this)"><input name="witness" value="unsure">নিশ্চিত নই</label>
+      </div>
+
+      <label>আপনার কী ধরনের সহায়তা দরকার?</label>
       <div class="check-grid" id="need-grp">
         <label class="check-item"><input type="checkbox" value="scared">😰 ভয়ে আছি</label>
-        <label class="check-item"><input type="checkbox" value="immediate_danger">🆘 তাৎক্ষণিক বিপদ</label>
+        <label class="check-item"><input type="checkbox" value="immediate_danger">🆘 তাৎক্ষণিক বিপদে আছি</label>
         <label class="check-item"><input type="checkbox" value="counseling">💙 মানসিক সহায়তা</label>
-        <label class="check-item"><input type="checkbox" value="legal">⚖️ আইনি সহায়তা</label>
+        <label class="check-item"><input type="checkbox" value="legal">⚖️ আইনি সহায়তা ও মামলা</label>
+        <label class="check-item"><input type="checkbox" value="content_removal">🗑 কন্টেন্ট সরানো</label>
         <label class="check-item"><input type="checkbox" value="technical">🔧 প্রযুক্তিগত সাহায্য</label>
-        <label class="check-item"><input type="checkbox" value="safe_now">✅ এখন নিরাপদ</label>
+        <label class="check-item"><input type="checkbox" value="shelter">🏠 নিরাপদ আশ্রয়</label>
+        <label class="check-item"><input type="checkbox" value="safe_now">✅ এখন নিরাপদ আছি</label>
       </div>
+
+      <label>Follow-up কোড (ঐচ্ছিক — কর্মকর্তারা আপনার সাথে যোগাযোগ করতে পারবেন)</label>
+      <div style="background:rgba(8,145,178,.05);border:1px solid rgba(8,145,178,.15);border-radius:9px;padding:10px 13px;font-size:.78rem;color:var(--text2);margin-bottom:10px;line-height:1.65;">
+        💡 একটি গোপন কোড দিন যা শুধু আপনি জানবেন (যেমন: আপনার পোষা প্রাণীর নাম + জন্মসাল)। এটি দিয়ে কর্মকর্তারা পরে আপনাকে চিনতে পারবেন — কিন্তু আপনার পরিচয় প্রকাশ পাবে না।
+      </div>
+      <input type="text" id="followup-code" placeholder="যেমন: বাঘা১৯৯৮ বা Mimi@blue — শুধু আপনি মনে রাখুন">
+
       <label>বিশেষ কিছু জানাতে চাইলে (ঐচ্ছিক)</label>
-      <input type="text" id="extra" placeholder="যেকোনো অতিরিক্ত তথ্য...">
+      <input type="text" id="extra" placeholder="যেকোনো অতিরিক্ত তথ্য যা কর্মকর্তাদের সাহায্য করবে...">
     </div>
 
     <div class="priv-box">
@@ -372,7 +489,7 @@ select option{background:var(--surface);}
       <div class="chat-box" id="chat-box">
         <div class="msg msg-ai">
           <div class="msg-ai-icon">🤖</div>
-          <div class="msg-ai-bubble">আসালামুয়ালাইকুম। আমি সুরক্ষা AI সহায়তা। আপনার যেকোনো সমস্যা আমাকে বলুন।</div>
+          <div class="msg-ai-bubble">আসালামুয়ালাইকুম। আমি ছায়াকবচ AI সহায়তা। আপনার যেকোনো সমস্যা আমাকে বলুন।</div>
         </div>
       </div>
       <div class="chat-input-row">
@@ -455,7 +572,7 @@ select option{background:var(--surface);}
 
 <script>
 // ══════════════════════════════════════════════════════════════
-//  SURAKSHA v3 — Secure User Portal
+//  ছায়াকবচ v1 — Secure User Portal
 //  NO localStorage · NO sessionStorage · NO browser history
 //  Reports saved to encrypted DB via persistent storage API
 //  Source protected — do not distribute
@@ -593,10 +710,11 @@ async function sha256(str) {
 
 async function addFiles(files) {
   for(const f of files) {
-    if(uploadedFiles.find(x => x.name === f.name)) continue;
-    const raw = f.name + f.size + f.lastModified + Math.random();
+    if(uploadedFiles.find(x => x.name === f.name && x.size === f.size)) continue;
+    const raw  = f.name + f.size + f.lastModified + Math.random();
     const hash = await sha256(raw);
-    uploadedFiles.push({ name: f.name, type: f.type, size: f.size, hash, blockRef: '0x'+hash.slice(0,40) });
+    // Store actual File object for later Firebase Storage upload
+    uploadedFiles.push({ name: f.name, type: f.type, size: f.size, hash, blockRef: '0x'+hash.slice(0,40), _file: f });
   }
   renderFiles();
 }
@@ -604,9 +722,13 @@ window.addFiles = addFiles;
 
 function renderFiles() {
   document.getElementById('file-rows').innerHTML = uploadedFiles.map((f,i) => `
-    <div class="file-row">
+    <div class="file-row" id="frow-${i}">
       <span>${f.type.startsWith('image')?'🖼':f.type.startsWith('video')?'🎥':f.type.startsWith('audio')?'🎵':'📄'}</span>
-      <div><div style="font-size:.79rem;">${f.name}</div><div class="file-hash">SHA-256: ${f.hash.slice(0,28)}...</div></div>
+      <div style="flex:1;">
+        <div style="font-size:.79rem;">${f.name}</div>
+        <div class="file-hash">SHA-256: ${f.hash.slice(0,28)}...</div>
+        <div class="file-status"></div>
+      </div>
       <span class="rm-file" onclick="rmFile(${i})">✕</span>
     </div>`).join('');
 }
@@ -865,7 +987,7 @@ async function analyzeIncident(desc, vTypes, riskLevel) {
   return await callAI(system, prompt);
 }
 
-const AI_CHAT_SYSTEM = `তুমি সুরক্ষা AI — একটি TFGBV প্রতিরোধ প্ল্যাটফর্মের সহায়তাকারী AI। বাংলাদেশের প্রেক্ষাপটে কাজ করো।
+const AI_CHAT_SYSTEM = `তুমি ছায়াকবচ AI — একটি TFGBV প্রতিরোধ প্ল্যাটফর্মের সহায়তাকারী AI। বাংলাদেশের প্রেক্ষাপটে কাজ করো।
 ভূমিকা: ভুক্তভোগীকে মানসিক সহায়তা ও ব্যবহারিক পরামর্শ দাও। ডিজিটাল নিরাপত্তা নির্দেশনা দাও। সর্বদা বাংলায় কথা বলো। ভুক্তভোগীকে কখনো দোষ দেবে না।
 জরুরি নম্বর: PCSW: 01320000888 · আইনি সহায়তা: 16430 · মানসিক স্বাস্থ্য: 01779-554391 · জরুরি: 999`;
 
@@ -920,13 +1042,49 @@ document.getElementById('chat-in').addEventListener('keydown', e => { if(e.key==
 // ─── FIREBASE SAVE ────────────────────────────────────────
 async function saveToDb(caseId, caseData) {
   try {
-    if(typeof window._fbSaveCase !== 'function') return; // Firebase not loaded yet
+    if(typeof window._fbSaveCase !== 'function') return;
     await window._fbSaveCase(caseId, caseData);
     document.getElementById('db-save-status').style.display = 'inline-flex';
   } catch(e) {
-    // Silent fail — data still in memory, user unaffected
     console.warn('DB save failed:', e.message);
   }
+}
+
+// ─── FILE UPLOAD TO FIREBASE STORAGE ─────────────────────
+async function uploadEvidenceFiles(caseId) {
+  if(!uploadedFiles.length) return [];
+
+  // Firebase module লোড হওয়ার জন্য অপেক্ষা (max 4s)
+  let waited = 0;
+  while(!window._fbUploadFile && waited < 4000) {
+    await new Promise(r => setTimeout(r, 200));
+    waited += 200;
+  }
+
+  const results = [];
+  for(let i = 0; i < uploadedFiles.length; i++) {
+    const f = uploadedFiles[i];
+    const rowEl = document.getElementById(`frow-${i}`);
+    const statusEl = rowEl?.querySelector('.file-status');
+    if(statusEl) statusEl.innerHTML = '<span class="upload-prog">⬆ আপলোড হচ্ছে...</span>';
+    try {
+      let uploaded;
+      if(typeof window._fbUploadFile === 'function') {
+        uploaded = await window._fbUploadFile(caseId, f._file, f.hash);
+      } else {
+        // Fallback: hash only (Firebase not available)
+        uploaded = { name:f.name, hash:f.hash, size:f.size, type:f.type, url:null, note:'Firebase unavailable' };
+      }
+      if(statusEl) statusEl.innerHTML = uploaded.url
+        ? '<span class="upload-done">✅ আপলোড সম্পন্ন</span>'
+        : '<span class="upload-done">✅ সংরক্ষিত (hash)</span>';
+      results.push(uploaded);
+    } catch(e) {
+      if(statusEl) statusEl.innerHTML = `<span class="upload-err">⚠️ ${e.message.slice(0,40)}</span>`;
+      results.push({ name:f.name, hash:f.hash, size:f.size, type:f.type, url:null, error: e.message });
+    }
+  }
+  return results;
 }
 
 // ─── SUBMIT REPORT ────────────────────────────────────────
@@ -943,25 +1101,49 @@ async function submitReport() {
   document.getElementById('load-msg').textContent = 'AI বিশ্লেষণ চলছে...';
 
   const score = computeScore();
-  const risk = getRisk(score);
+  const risk  = getRisk(score);
   const caseId = genId();
-  const threat = document.querySelector('[name=threat]:checked')?.value || 'no';
-  const access = document.querySelector('[name=access]:checked')?.value || 'unsure';
-  const known  = document.querySelector('[name=known]:checked')?.value  || 'maybe';
+  const threat = document.querySelector('[name=threat]:checked')?.value  || 'no';
+  const access = document.querySelector('[name=access]:checked')?.value  || 'unsure';
+  const known  = document.querySelector('[name=known]:checked')?.value   || 'maybe';
   const dur    = parseInt(document.getElementById('dur').value) || 7;
+
+  // ── অপরাধীর তথ্য সংগ্রহ ──
+  const perpetrator = {
+    name:     (document.getElementById('perp-name')?.value     || '').trim(),
+    relation: document.querySelector('[name=relation]:checked')?.value || 'unknown',
+    profiles: (document.getElementById('perp-profiles')?.value || '').trim(),
+    phone:    (document.getElementById('perp-phone')?.value    || '').trim(),
+    location: (document.getElementById('perp-location')?.value || '').trim(),
+    multiple: document.querySelector('[name=multi]:checked')?.value || 'unknown',
+    extra:    (document.getElementById('perp-extra')?.value    || '').trim(),
+  };
+
+  // ── বিচারের জন্য অতিরিক্ত তথ্য ──
+  const justiceInfo = {
+    ageGroup:    document.querySelector('[name=agegroup]:checked')?.value || 'prefer_not',
+    prevReports: [...document.querySelectorAll('#prev-grp input:checked')].map(x => x.value),
+    caseRef:     (document.getElementById('case-ref')?.value || '').trim(),
+    witness:     document.querySelector('[name=witness]:checked')?.value || 'unsure',
+    followupCode:(document.getElementById('followup-code')?.value || '').trim(),
+  };
 
   document.getElementById('load-msg').textContent = 'AI পরামর্শ তৈরি করছে...';
   const aiAnalysis = await analyzeIncident(desc, vTypes, risk.label);
-  await new Promise(r => setTimeout(r, 400));
 
+  // ── ফাইল আপলোড ──
+  document.getElementById('load-msg').textContent = `প্রমাণ ফাইল আপলোড হচ্ছে (${uploadedFiles.length}টি)...`;
+  const evidenceFiles = await uploadEvidenceFiles(caseId);
+
+  await new Promise(r => setTimeout(r, 300));
   document.getElementById('loading-overlay').classList.remove('on');
 
-  const actions = getActions(score, vTypes, threat, access);
+  const actions    = getActions(score, vTypes, threat, access);
   const safetyGuide = getSafetyGuide(platforms);
-  const refs = getRefs(score);
-  const factors = buildFactors(score, vTypes, dur, threat, access);
+  const refs       = getRefs(score);
+  const factors    = buildFactors(score, vTypes, dur, threat, access);
 
-  // Save to in-memory (never browser storage)
+  // ── In-memory ──
   const caseData = {
     caseId, score, riskLevel: risk.level, riskLabel: risk.label,
     vTypes, platforms, dur, threat, access, known, needs,
@@ -970,11 +1152,33 @@ async function submitReport() {
   };
   MEM.cases[caseId] = caseData;
 
-  // Also save to persistent DB (anonymous, Case ID only)
+  // ── Firestore-এ সম্পূর্ণ data সেভ ──
   await saveToDb(caseId, {
-    caseId, riskLevel: risk.level, riskLabel: risk.label, vTypes, platforms,
-    evidenceCount: uploadedFiles.length, status: 'সক্রিয়',
-    timestamp: new Date().toISOString(),
+    caseId,
+    riskLevel:      risk.level,
+    riskLabel:      risk.label,
+    score:          Math.round(score * 100),
+    status:         'সক্রিয়',
+    timestamp:      new Date().toISOString(),
+    // ঘটনার বিবরণ
+    incidentDesc:   desc,
+    vTypes,
+    platforms,
+    dur,
+    threat,
+    access,
+    known,
+    needs,
+    extraNote:      (document.getElementById('extra')?.value || '').trim(),
+    // অপরাধীর তথ্য
+    perpetrator,
+    // বিচারের জন্য অতিরিক্ত তথ্য
+    justiceInfo,
+    // প্রমাণ ফাইল (URL সহ)
+    evidenceFiles,
+    evidenceCount:  evidenceFiles.length,
+    // AI বিশ্লেষণ
+    aiAnalysis:     aiAnalysis || '',
   });
 
   renderResult({ caseId, risk, score, actions, factors, safetyGuide, refs, aiAnalysis, vTypes });
@@ -1101,7 +1305,7 @@ function toast(msg) {
 
 // ─── INITIAL ──────────────────────────────────────────────
 updDur(document.getElementById('dur'));
-setTimeout(() => { document.title = 'সুরক্ষা | নিরাপদ সহায়তা পোর্টাল'; }, 800);
+setTimeout(() => { document.title = 'ছায়াকবচ | নিরাপদ সহায়তা পোর্টাল'; }, 800);
 
 })(); // END IIFE — hides all variables from global scope
 </script>
