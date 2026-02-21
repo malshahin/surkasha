@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="no-referrer">
-<title>সুরক্ষা — কর্মকর্তা প্যানেল</title>
+<title>ছায়াকবচ — কর্মকর্তা প্যানেল</title>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <!-- ═══════════════════════════════════════════════════
@@ -33,11 +33,9 @@ window._fbLoadAll = async function() {
   const snap = await getDocs(collection(db, "cases"));
   return snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
 };
-
 window._fbUpdateStatus = async function(caseId, status) {
   await updateDoc(doc(db, "cases", caseId), { status, updatedAt: serverTimestamp() });
 };
-
 window._fbDeleteCase = async function(caseId) {
   await deleteDoc(doc(db, "cases", caseId));
 };
@@ -142,6 +140,24 @@ main{position:relative;z-index:1;padding-top:76px;max-width:980px;margin:0 auto;
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--card2);border:1px solid var(--teal);border-radius:9px;padding:10px 18px;font-size:.82rem;opacity:0;transition:all .25s;z-index:500;white-space:nowrap;pointer-events:none;}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 @media(max-width:600px){.stats-grid{grid-template-columns:1fr 1fr;}.case-ts{display:none;}}
+/* ── DETAIL PANEL ── */
+.detail-panel{display:none;margin-top:10px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.75;}
+.detail-panel.open{display:block;}
+.detail-section{margin-bottom:12px;}
+.detail-section-title{font-size:.7rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+.detail-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:3px;}
+.detail-key{color:var(--muted);min-width:110px;flex-shrink:0;}
+.detail-val{color:var(--text2);word-break:break-all;}
+.perp-block{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:11px 13px;}
+.desc-block{background:rgba(8,145,178,.04);border:1px solid rgba(8,145,178,.15);border-radius:8px;padding:11px 13px;color:var(--text2);line-height:1.7;white-space:pre-wrap;word-break:break-word;}
+/* evidence files */
+.ev-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+.ev-item{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:.72rem;display:flex;flex-direction:column;gap:4px;max-width:200px;}
+.ev-img{width:100%;max-height:100px;object-fit:cover;border-radius:5px;margin-bottom:4px;cursor:pointer;}
+.ev-link{color:var(--teal2);text-decoration:none;font-family:var(--mono);font-size:.68rem;}
+.ev-link:hover{text-decoration:underline;}
+.btn-detail{background:none;border:none;color:var(--muted);font-size:.72rem;cursor:pointer;font-family:var(--mono);padding:0;transition:color .2s;}
+.btn-detail:hover{color:var(--text);}
 </style>
 </head>
 <body>
@@ -150,8 +166,8 @@ main{position:relative;z-index:1;padding-top:76px;max-width:980px;margin:0 auto;
 <div id="header">
   <div class="logo-mark">⚙️</div>
   <div>
-    <div class="logo-text">সুরক্ষা কর্মকর্তা প্যানেল</div>
-    <div class="logo-sub">SURAKSHA ADMIN · Firebase Edition</div>
+    <div class="logo-text">ছায়াকবচ কর্মকর্তা প্যানেল</div>
+    <div class="logo-sub">ছায়াকবচ ADMIN v1 · Firebase Edition</div>
   </div>
   <div class="admin-pill" id="admin-pill" style="display:none;">
     <div class="gdot"></div>সেশন সক্রিয়
@@ -228,7 +244,7 @@ main{position:relative;z-index:1;padding-top:76px;max-width:980px;margin:0 auto;
 <script>
 (function() {
 
-const ADMIN_PASS = 'suraksha2026'; // ← প্রোডাকশনে পরিবর্তন করুন
+const ADMIN_PASS = 'chayakaboch2026'; // ← প্রোডাকশনে পরিবর্তন করুন
 let allCases = [];
 let sessionStart = null;
 let sessionInterval = null;
@@ -320,35 +336,143 @@ function renderCases(cases) {
     return;
   }
   const RL = { CRITICAL:'জরুরি', HIGH:'উচ্চ ঝুঁকি', MEDIUM:'মাঝারি', LOW:'নিম্ন' };
-  document.getElementById('cases-list').innerHTML = cases.map(c => {
+  const REL_LABEL = { unknown:'অপরিচিত', classmate:'সহপাঠী', colleague:'সহকর্মী', expartner:'প্রাক্তন সঙ্গী', relative:'আত্মীয়', online_only:'শুধু অনলাইনে', other:'অন্যান্য' };
+  const MULTI_LABEL = { single:'একজন', multiple:'একাধিক', unknown:'অজানা' };
+
+  document.getElementById('cases-list').innerHTML = cases.map((c,idx) => {
     const rl = (c.riskLevel||'LOW').toLowerCase();
     const stBadge = c.status==='সমাধান হয়েছে'?'tb-resolved':c.status==='পর্যালোচনাধীন'?'tb-review':c.status==='রেফার করা হয়েছে'?'tb-referred':'tb-active';
     let ts = '—';
     if(c.savedAt?.seconds) ts = new Date(c.savedAt.seconds*1000).toLocaleString('bn-BD');
     else if(c.timestamp) ts = c.timestamp;
+
     const vtags = (c.vTypes||[]).map(v=>`<span class="meta-tag">🔴 ${v}</span>`).join('');
     const ptags = (c.platforms||[]).map(p=>`<span class="meta-tag">📱 ${p}</span>`).join('');
+
+    // ── বিচারের তথ্য ──
+    const j = c.justiceInfo || {};
+    const AGE = { minor:'অপ্রাপ্তবয়স্ক (১৮-)', adult:'প্রাপ্তবয়স্ক (১৮+)', prefer_not:'জানাতে চাননি' };
+    const WIT = { yes:'হ্যাঁ', no:'না', unsure:'নিশ্চিত নই' };
+    const justiceBlock = (j.ageGroup || j.prevReports?.length || j.caseRef || j.witness) ? `
+      <div class="detail-section">
+        <div class="detail-section-title">⚖️ বিচারের তথ্য</div>
+        <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:11px 13px;">
+          ${j.ageGroup    ? `<div class="detail-row"><span class="detail-key">বয়স শ্রেণী:</span><span class="detail-val ${j.ageGroup==='minor'?'style="color:#fbbf24;font-weight:700;"':''}">${j.ageGroup==='minor'?'⚠️ ':''} ${AGE[j.ageGroup]||j.ageGroup}</span></div>` : ''}
+          ${j.prevReports?.length ? `<div class="detail-row"><span class="detail-key">আগের রিপোর্ট:</span><span class="detail-val">${j.prevReports.join(', ')}</span></div>` : ''}
+          ${j.caseRef     ? `<div class="detail-row"><span class="detail-key">মামলা/GD নম্বর:</span><span class="detail-val"><strong>${j.caseRef}</strong></span></div>` : ''}
+          ${j.witness     ? `<div class="detail-row"><span class="detail-key">সাক্ষী:</span><span class="detail-val">${WIT[j.witness]||j.witness}</span></div>` : ''}
+          ${j.followupCode ? `<div class="detail-row"><span class="detail-key">Follow-up কোড:</span><span class="detail-val" style="font-family:var(--mono);color:var(--teal2);">${j.followupCode}</span></div>` : ''}
+        </div>
+      </div>` : '';
+
+    // ── অপরাধীর তথ্য block ──
+    const p = c.perpetrator || {};
+    const perpHasData = p.name||p.phone||p.profiles||p.location||p.extra;
+    const perpBlock = perpHasData ? `
+      <div class="detail-section">
+        <div class="detail-section-title">🚨 অপরাধীর তথ্য</div>
+        <div class="perp-block">
+          ${p.name     ? `<div class="detail-row"><span class="detail-key">নাম:</span><span class="detail-val"><strong>${p.name}</strong></span></div>` : ''}
+          ${p.relation ? `<div class="detail-row"><span class="detail-key">সম্পর্ক:</span><span class="detail-val">${REL_LABEL[p.relation]||p.relation}</span></div>` : ''}
+          ${p.phone    ? `<div class="detail-row"><span class="detail-key">ফোন:</span><span class="detail-val"><a href="tel:${p.phone}" style="color:var(--teal2);">${p.phone}</a></span></div>` : ''}
+          ${p.profiles ? `<div class="detail-row"><span class="detail-key">প্রোফাইল:</span><span class="detail-val" style="white-space:pre-wrap;">${p.profiles}</span></div>` : ''}
+          ${p.location ? `<div class="detail-row"><span class="detail-key">অবস্থান:</span><span class="detail-val">${p.location}</span></div>` : ''}
+          ${p.multiple ? `<div class="detail-row"><span class="detail-key">অপরাধী সংখ্যা:</span><span class="detail-val">${MULTI_LABEL[p.multiple]||p.multiple}</span></div>` : ''}
+          ${p.extra    ? `<div class="detail-row"><span class="detail-key">অতিরিক্ত:</span><span class="detail-val">${p.extra}</span></div>` : ''}
+        </div>
+      </div>` : '';
+
+    // ── ঘটনার বিবরণ ──
+    const descBlock = c.incidentDesc ? `
+      <div class="detail-section">
+        <div class="detail-section-title">📝 ঘটনার বিবরণ</div>
+        <div class="desc-block">${c.incidentDesc}</div>
+      </div>` : '';
+
+    // ── AI বিশ্লেষণ ──
+    const aiBlock = c.aiAnalysis ? `
+      <div class="detail-section">
+        <div class="detail-section-title">🤖 AI বিশ্লেষণ</div>
+        <div class="desc-block" style="border-color:rgba(124,58,237,.25);background:rgba(124,58,237,.04);">${c.aiAnalysis}</div>
+      </div>` : '';
+
+    // ── প্রমাণ ফাইল ──
+    const evFiles = c.evidenceFiles || [];
+    const evBlock = evFiles.length ? `
+      <div class="detail-section">
+        <div class="detail-section-title">📎 প্রমাণ ফাইল (${evFiles.length}টি)</div>
+        <div class="ev-grid">
+          ${evFiles.map(f => {
+            const isImg = f.type?.startsWith('image');
+            const isVid = f.type?.startsWith('video');
+            return `<div class="ev-item">
+              ${isImg && f.url ? `<img src="${f.url}" class="ev-img" onclick="window.open('${f.url}','_blank')" title="${f.name}">` : ''}
+              ${isVid && f.url ? `<video src="${f.url}" class="ev-img" controls style="max-height:80px;"></video>` : ''}
+              <span>${isImg?'🖼':isVid?'🎥':f.type?.startsWith('audio')?'🎵':'📄'} ${f.name}</span>
+              ${f.url ? `<a href="${f.url}" target="_blank" class="ev-link">⬇ ডাউনলোড</a>` : '<span style="color:var(--muted);font-size:.68rem;">URL নেই</span>'}
+              <span style="color:var(--muted);font-family:var(--mono);font-size:.65rem;">${f.hash ? f.hash.slice(0,20)+'...' : ''}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : '';
+
+    // ── অন্যান্য তথ্য ──
+    const metaBlock = `
+      <div class="detail-section">
+        <div class="detail-section-title">ℹ️ অন্যান্য তথ্য</div>
+        ${c.dur    ? `<div class="detail-row"><span class="detail-key">সময়কাল:</span><span class="detail-val">${c.dur} দিন</span></div>` : ''}
+        ${c.known  ? `<div class="detail-row"><span class="detail-key">অপরাধী পরিচিত:</span><span class="detail-val">${c.known==='yes'?'হ্যাঁ':c.known==='no'?'না':'নিশ্চিত নই'}</span></div>` : ''}
+        ${c.threat ? `<div class="detail-row"><span class="detail-key">শারীরিক হুমকি:</span><span class="detail-val ${c.threat==='yes'?'':''}"><strong>${c.threat==='yes'?'⚠️ হ্যাঁ':'না'}</strong></span></div>` : ''}
+        ${c.access ? `<div class="detail-row"><span class="detail-key">একাউন্ট অ্যাক্সেস:</span><span class="detail-val">${c.access==='yes'?'⚠️ হ্যাঁ':c.access==='no'?'না':'অজানা'}</span></div>` : ''}
+        ${c.extraNote ? `<div class="detail-row"><span class="detail-key">অতিরিক্ত নোট:</span><span class="detail-val">${c.extraNote}</span></div>` : ''}
+        ${(c.needs||[]).length ? `<div class="detail-row"><span class="detail-key">প্রয়োজন:</span><span class="detail-val">${c.needs.join(', ')}</span></div>` : ''}
+      </div>`;
+
     return `
-    <div class="case-card ${rl}">
+    <div class="case-card ${rl}" id="cc-${idx}">
       <div class="case-hdr">
         <span class="case-id">${c.caseId}</span>
         <span class="rl-${rl}">${c.riskLabel||RL[c.riskLevel]||c.riskLevel}</span>
         <span class="${stBadge}">${c.status}</span>
+        ${c.perpetrator?.name ? `<span class="meta-tag" style="background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:#fca5a5;">🚨 ${c.perpetrator.name}</span>` : ''}
+        ${c.justiceInfo?.ageGroup==='minor' ? `<span class="meta-tag" style="background:rgba(251,191,36,.15);border-color:rgba(251,191,36,.4);color:#fbbf24;font-weight:700;">⚠️ অপ্রাপ্তবয়স্ক</span>` : ''}
+        ${c.justiceInfo?.caseRef ? `<span class="meta-tag" style="color:var(--teal2);">📋 ${c.justiceInfo.caseRef}</span>` : ''}
         <span class="case-ts">${ts}</span>
       </div>
       <div class="case-meta">${vtags}${ptags}<span class="meta-tag">📎 ${c.evidenceCount||0}টি</span></div>
+      ${c.incidentDesc ? `<div style="font-size:.77rem;color:var(--text2);margin:6px 0 8px;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${c.incidentDesc}</div>` : ''}
       <div class="case-footer">
-        <select class="status-sel" onchange="updStatus('${c.caseId}',this.value)">
-          <option ${c.status==='সক্রিয়'?'selected':''}>সক্রিয়</option>
-          <option ${c.status==='পর্যালোচনাধীন'?'selected':''}>পর্যালোচনাধীন</option>
-          <option ${c.status==='রেফার করা হয়েছে'?'selected':''}>রেফার করা হয়েছে</option>
-          <option ${c.status==='সমাধান হয়েছে'?'selected':''}>সমাধান হয়েছে</option>
-        </select>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <select class="status-sel" onchange="updStatus('${c.caseId}',this.value)">
+            <option ${c.status==='সক্রিয়'?'selected':''}>সক্রিয়</option>
+            <option ${c.status==='পর্যালোচনাধীন'?'selected':''}>পর্যালোচনাধীন</option>
+            <option ${c.status==='রেফার করা হয়েছে'?'selected':''}>রেফার করা হয়েছে</option>
+            <option ${c.status==='সমাধান হয়েছে'?'selected':''}>সমাধান হয়েছে</option>
+          </select>
+          <button class="btn-detail" onclick="toggleDetail(${idx})">🔍 বিস্তারিত ▾</button>
+        </div>
         <button class="btn-sm btn-danger" onclick="deleteCase('${c.caseId}')">🗑 মুছুন</button>
+      </div>
+      <!-- DETAIL PANEL -->
+      <div class="detail-panel" id="dp-${idx}">
+        ${justiceBlock}
+        ${perpBlock}
+        ${descBlock}
+        ${evBlock}
+        ${aiBlock}
+        ${metaBlock}
       </div>
     </div>`;
   }).join('');
 }
+
+function toggleDetail(idx) {
+  const dp  = document.getElementById('dp-'+idx);
+  const btn = dp.previousElementSibling.querySelector('.btn-detail');
+  const open = dp.classList.toggle('open');
+  btn.textContent = open ? '🔍 বন্ধ করুন ▴' : '🔍 বিস্তারিত ▾';
+}
+window.toggleDetail = toggleDetail;
 
 async function updStatus(caseId, status) {
   try {
@@ -374,18 +498,37 @@ window.deleteCase = deleteCase;
 
 function exportCsv() {
   if(!allCases.length) { toast('⚠️ কোনো কেস নেই'); return; }
-  const H = ['Case ID','Risk Level','Risk Label','Status','V-Types','Platforms','Evidence Count','Saved At'];
+  const H = [
+    'Case ID','Risk Level','Risk Label','Score','Status',
+    'Incident Description',
+    'V-Types','Platforms','Duration (days)','Physical Threat','Account Access','Known Perpetrator',
+    'Perp Name','Perp Relation','Perp Phone','Perp Profiles','Perp Location','Perp Multiple','Perp Extra',
+    'Age Group','Previous Reports','Case/GD Ref','Witness','Followup Code',
+    'Evidence Count','Evidence URLs',
+    'Needs','Extra Note','AI Analysis','Saved At'
+  ];
   const rows = allCases.map(c => {
     const ts = c.savedAt?.seconds ? new Date(c.savedAt.seconds*1000).toISOString() : (c.timestamp||'');
-    return [c.caseId,c.riskLevel,c.riskLabel||'',c.status,
-      (c.vTypes||[]).join(';'),(c.platforms||[]).join(';'),c.evidenceCount||0,ts
+    const p  = c.perpetrator || {};
+    const j  = c.justiceInfo || {};
+    const evUrls = (c.evidenceFiles||[]).filter(f=>f.url).map(f=>f.url).join(' | ');
+    return [
+      c.caseId, c.riskLevel, c.riskLabel||'', c.score||'', c.status,
+      c.incidentDesc||'',
+      (c.vTypes||[]).join(';'), (c.platforms||[]).join(';'),
+      c.dur||'', c.threat||'', c.access||'', c.known||'',
+      p.name||'', p.relation||'', p.phone||'', p.profiles||'', p.location||'', p.multiple||'', p.extra||'',
+      j.ageGroup||'', (j.prevReports||[]).join(';'), j.caseRef||'', j.witness||'', j.followupCode||'',
+      c.evidenceCount||0, evUrls,
+      (c.needs||[]).join(';'), c.extraNote||'', (c.aiAnalysis||'').replace(/\n/g,' '),
+      ts,
     ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
   });
   const csv  = [H.join(','),...rows].join('\n');
   const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href=url; a.download='suraksha_cases_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.href=url; a.download='chayakaboch_cases_'+new Date().toISOString().slice(0,10)+'.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast('📥 CSV ডাউনলোড হচ্ছে');
